@@ -1,0 +1,14 @@
+{
+  "id": "waterfall",
+  "name": "Waterfall",
+  "version": "0.1.0",
+  "description": "Live receive waterfall and recent frames of a pdn-soundmodem station",
+  "api": 1,
+  "exec": "waterfall",
+  "icon": "icon.ppm",
+  "permissions": ["network"],
+  "settings": [
+    { "key": "url", "label": "Station address (ws://host:port/)", "type": "text", "default": "ws://10.45.0.37:8099/" },
+    { "key": "name", "label": "Name in the header (empty: the station's own)", "type": "text", "default": "" }
+  ]
+}

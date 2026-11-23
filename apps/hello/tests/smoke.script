@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Starts, draws, moves the box, and leaves on X.
+waitframe 5000
+expect app
+key right
+key down
+waitframe 2000
+touch 200 300
+waitframe 2000
+shot build/smoke.png
+key x
+waitscreen launcher 3000

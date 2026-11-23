@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Starts and draws with no station to reach (tests/waterfall.conf), keeps
+# answering keys and touches while it retries, and leaves on X.
+waitframe 5000
+expect app
+wait 2500
+touch 700 90
+key ok
+wait 300
+shot build/smoke.png
+key x
+waitscreen launcher 3000

@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Builds every app against the published SDK (never a checkout of the firmware
+# repo), runs each in the PC simulator, packs .t48app files and, on main,
+# publishes them with index.json on GitHub Pages: the phone's default feed.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # sdk-latest is rolling; put a firmware release tag (v...) here to pin one
+  SDK_TAG: sdk-latest
+  SDK_URL: https://github.com/M0LTE/yealink-t48s/releases/download
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Which SDK
+        run: curl -fsSL -o sdk.sha256 "$SDK_URL/$SDK_TAG/t48s-sdk.tar.gz.sha256" && cat sdk.sha256
+
+      - name: SDK cache
+        id: sdk
+        uses: actions/cache@v4
+        with:
+          path: t48s-sdk.tar.gz
+          key: sdk-${{ hashFiles('sdk.sha256') }}
+
+      - name: SDK
+        run: |
+          [ -f t48s-sdk.tar.gz ] || curl -fsSL -o t48s-sdk.tar.gz "$SDK_URL/$SDK_TAG/t48s-sdk.tar.gz"
+          sha256sum -c sdk.sha256
+          tar -C "$RUNNER_TEMP" -xzf t48s-sdk.tar.gz
+          "$RUNNER_TEMP/t48s-sdk/relocate-sdk.sh" >/dev/null
+          echo "T48_SDK=$RUNNER_TEMP/t48s-sdk" >> "$GITHUB_ENV"
+          cat "$RUNNER_TEMP/t48s-sdk/share/t48/VERSION"
+
+      - name: Build
+        run: make all
+
+      - name: Simulator tests
+        run: make check
+
+      - name: Packages and feed
+        run: make feed
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: feed-${{ github.sha }}
+          path: |
+            site/
+            apps/*/build/*.png
+          retention-days: 14
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: site/
+
+  pages:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

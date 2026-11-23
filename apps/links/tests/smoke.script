@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Starts and draws, whether or not the node can be reached; OK fetches again,
+# a tap on Refresh too, and X leaves.
+waitframe 5000
+expect app
+wait 1500
+key ok
+wait 300
+touch 90 448
+wait 300
+shot build/smoke.png
+key x
+waitscreen launcher 3000
