@@ -54,9 +54,11 @@
 #define PANEL_TOP (HDR_H + 28)
 #define PANEL_ROW 48
 
+/* The waterfall and spectrum are an instrument: dark whatever the theme, in
+ * these colours. The header and the list of frames beside it are the theme's
+ * (Settings, Screen, Theme), as the rest of the phone is. */
+#define TH (t48_theme_now())
 #define C_BG T48_RGB(8, 10, 16)
-#define C_HDR T48_RGB(18, 24, 36)
-#define C_PANEL T48_RGB(14, 19, 29)
 #define C_LINE T48_RGB(40, 52, 72)
 #define C_GRID T48_RGB(24, 31, 44)
 #define C_TEXT T48_RGB(226, 232, 240)
@@ -411,16 +413,17 @@ static void on_msg(void *ctx, int type, unsigned char *p, size_t len)
 static void draw_header(void)
 {
     char b[96];
-    t48_fill(s, 0, 0, W, HDR_H, C_HDR);
-    t48_fill(s, 0, HDR_H - 1, W, 1, C_LINE);
-    int x = t48_text(s, 12, 7, F_BOLD, C_TEXT, st.name);
+    const int ty = (HDR_H - F_BOLD->height) / 2, my = (HDR_H - F_MONO->height) / 2;
+    t48_fill(s, 0, 0, W, HDR_H, TH->head);
+    if (TH->head_rule) t48_fill(s, 0, HDR_H - 1, W, 1, TH->line);
+    int x = t48_text(s, 12, ty, F_BOLD, TH->on_head, st.name);
     if (st.dial_hz > 0) {
         snprintf(b, sizeof b, "%.3f kHz %s", st.dial_hz / 1000.0, st.lsb ? "LSB" : "USB");
-        x = t48_text(s, x + 16, 10, F_MONO, C_AMBER, b);
+        x = t48_text(s, x + 16, my, F_MONO, TH->on_head, b);
     }
     if (st.version[0]) {
         snprintf(b, sizeof b, "pdn-soundmodem %s", st.version);
-        t48_text(s, x + 16, 10, F_SMALL, C_FAINT, b);
+        t48_text(s, x + 16, (HDR_H - F_SMALL->height) / 2, F_SMALL, TH->on_head_dim, b);
     }
     /* right: TX pill, link state, UTC clock */
     time_t now = time(0);
@@ -428,27 +431,28 @@ static void draw_header(void)
     gmtime_r(&now, &tm);
     snprintf(b, sizeof b, "%02d:%02d:%02d UTC", tm.tm_hour, tm.tm_min, tm.tm_sec);
     int rx = W - 12 - t48_text_width(F_MONO, b);
-    t48_text(s, rx, 10, F_MONO, C_DIM, b);
+    t48_text(s, rx, my, F_MONO, TH->on_head_dim, b);
     long long t = t48_now_ms();
     const char *label;
     uint32_t c;
-    if (st.up && t - st.last_line_ms < 3000) label = "LIVE", c = C_GOOD;
-    else if (st.up) label = st.have_config ? "NO SPECTRUM" : "WAITING", c = C_AMBER;
-    else if (!st.url_ok) label = "NO ADDRESS", c = C_BAD;
+    /* a lamp says how it stands, the word beside it is in the header's own ink */
+    if (st.up && t - st.last_line_ms < 3000) label = "LIVE", c = TH->good;
+    else if (st.up) label = st.have_config ? "NO SPECTRUM" : "WAITING", c = TH->on_head_dim;
+    else if (!st.url_ok) label = "NO ADDRESS", c = TH->bad;
     else if (st.retry_at > t) {
         snprintf(b, sizeof b, "RETRY IN %lld s", (st.retry_at - t + 999) / 1000);
-        label = b, c = C_BAD;
-    } else label = "CONNECTING", c = C_AMBER;
+        label = b, c = TH->bad;
+    } else label = "CONNECTING", c = TH->on_head_dim;
     int w = t48_text_width(F_BOLD, label);
     rx -= w + 34;
-    t48_fill(s, rx - 4, 0, w + 30, HDR_H - 1, C_HDR);
-    t48_round_fill(s, rx + 2, 14, 9, 9, 4, c);
-    t48_text(s, rx + 16, 7, F_BOLD, c, label);
+    t48_fill(s, rx - 4, 0, w + 30, HDR_H - 1, TH->head);
+    t48_ui_lamp(s, rx, HDR_H / 2 - 6, c);
+    t48_text(s, rx + 18, ty, F_BOLD, TH->on_head, label);
     if (st.tx_keyed) {
         int pw = t48_text_width(F_BOLD, "TX") + 16;
         rx -= pw + 12;
-        t48_fill(s, rx, 6, pw, 24, C_BAD);
-        t48_text(s, rx + 8, 7, F_BOLD, T48_RGB(255, 255, 255), "TX");
+        t48_round_fill(s, rx, 6, pw, HDR_H - 12, TH->radius < 8 ? TH->radius : 8, TH->bad);
+        t48_text(s, rx + 8, ty, F_BOLD, TH->on_bad, "TX");
     }
     t48_damage(0, 0, W, HDR_H);
 }
@@ -683,24 +687,24 @@ static void draw_waterfall(void)
 static void draw_panel(void)
 {
     char b[64], snr[16];
-    t48_fill(s, PANEL_X, HDR_H, PANEL_W, H - HDR_H, C_PANEL);
-    t48_text(s, PANEL_X + 10, HDR_H + 8, F_TINY, C_FAINT, "RECENT FRAMES");
+    t48_fill(s, PANEL_X, HDR_H, PANEL_W, H - HDR_H, TH->bg);
+    t48_text(s, PANEL_X + 10, HDR_H + 8, F_TINY, TH->dim, "RECENT FRAMES");
     int y = PANEL_TOP;
     int n = tag_seq < NTAGS ? (int)tag_seq : NTAGS;
-    if (!n) t48_text(s, PANEL_X + 10, y + 4, F_SMALL, C_FAINT, "none yet");
+    if (!n) t48_text(s, PANEL_X + 10, y + 4, F_SMALL, TH->dim, "none yet");
     for (int k = 0; k < n && y + PANEL_ROW <= H; k++) {
         const tag_t *t = &tags[(tag_seq - 1 - k) % NTAGS];
         uint32_t c = t->tx ? C_COOL : band_colour(t->sub);
-        t48_fill(s, PANEL_X + 8, y + 3, 3, PANEL_ROW - 10, c);
-        /* our own transmissions are told by their colour, and "TX" below */
+        /* the bar is the band's colour on the waterfall; our own transmissions say "TX" below */
+        t48_fill(s, PANEL_X + 8, y + 3, 3, PANEL_ROW - 10, TH->dark ? c : t48_mix(c, 0x000000, 70));
         snprintf(b, sizeof b, "%s > %s", t->from[0] ? t->from : "?", t->to[0] ? t->to : "?");
-        t48_text_fit(s, PANEL_X + 18, y + 1, PANEL_W - 24, F_BOLD, t->tx ? C_COOL : C_TEXT, b);
+        t48_text_fit(s, PANEL_X + 18, y + 1, PANEL_W - 24, F_BOLD, t->tx ? TH->dim : TH->text, b);
         const band_t *bd = band_of(t->sub);
         snr[0] = 0;
         if (t->snr10 != NO_SNR) { snprintf(snr, sizeof snr, "  "); snr_text(t->snr10, snr + 2, sizeof snr - 2); }
         snprintf(b, sizeof b, "%s  %s%s%s", t->at, t->tx ? "TX  " : "", bd ? bd->name : "", snr);
-        t48_text_fit(s, PANEL_X + 18, y + 25, PANEL_W - 24, F_TINY, C_DIM, b);
-        t48_fill(s, PANEL_X + 8, y + PANEL_ROW - 4, PANEL_W - 16, 1, C_GRID);
+        t48_text_fit(s, PANEL_X + 18, y + 25, PANEL_W - 24, F_TINY, TH->dim, b);
+        t48_fill(s, PANEL_X + 8, y + PANEL_ROW - 4, PANEL_W - 16, 1, TH->line);
         y += PANEL_ROW;
     }
     t48_damage(PANEL_X, HDR_H, PANEL_W, H - HDR_H);
@@ -862,6 +866,9 @@ int main(void)
             st.paused = 0;
             st.retry_at = 0;
             st.backoff = 1;
+            redraw(1);
+            break;
+        case T48_EV_THEME:  /* the owner changed the look: the header and the list wear it */
             redraw(1);
             break;
         case T48_EV_QUIT:

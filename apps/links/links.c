@@ -35,16 +35,14 @@
 #define REFRESH_MS 15000
 #define PAGE_TIMEOUT_MS 6000
 
-#define C_BG T48_RGB(14, 20, 30)
-#define C_PANEL T48_RGB(26, 36, 52)
-#define C_LINE T48_RGB(44, 58, 80)
-#define C_TEXT T48_RGB(225, 232, 240)
-#define C_DIM T48_RGB(130, 145, 165)
-#define C_ACCENT T48_RGB(255, 190, 60)
-#define C_GOOD T48_RGB(110, 210, 130)
-#define C_BAD T48_RGB(235, 100, 90)
-#define C_BTN T48_RGB(48, 96, 160)
-#define C_BTN_HI T48_RGB(90, 140, 210)
+/* colours are the theme's (Settings, Screen, Theme), by what they are for */
+#define TH (t48_theme_now())
+#define C_BG (TH->bg)
+#define C_LINE (TH->line)
+#define C_TEXT (TH->text)
+#define C_DIM (TH->dim)
+#define C_GOOD (TH->good)
+#define C_BAD (TH->bad)
 
 #define F_TITLE (&t48_font_head)
 #define F_LABEL (&t48_font_normal)
@@ -237,7 +235,7 @@ static int section(int y, const char *title, int count)
 {
     char t[64];
     snprintf(t, sizeof t, "%s (%d)", title, count);
-    t48_text(s, 16, y, F_BOLD, C_ACCENT, t);
+    t48_text(s, 16, y, F_BOLD, C_TEXT, t);
     t48_fill(s, 16, y + 26, W - 32, 1, C_LINE);
     return y + 32;
 }
@@ -248,13 +246,14 @@ static void draw_page(void)
     time_t t = time(NULL);
     struct tm tm;
 
-    t48_fill(s, 0, 0, W, H, C_BG);
-    t48_fill(s, 0, 0, W, 56, C_PANEL);
-    int x = t48_text(s, 16, 13, F_TITLE, C_TEXT, node_name);
-    t48_text(s, x + 14, 20, F_LABEL, C_DIM, "packet node");
+    /* the shell's own header, with our words in it: the node, and the time as packet radio keeps it */
+    t48_ui_clear(s, C_BG);
+    t48_ui_header_ground(s);
+    int x = t48_text(s, 16, (T48_UI_HEAD_H - F_TITLE->height) / 2, F_TITLE, TH->on_head, node_name);
+    t48_text(s, x + 14, (T48_UI_HEAD_H - F_LABEL->height) / 2 + 2, F_LABEL, TH->on_head_dim, "packet node");
     gmtime_r(&t, &tm);
     snprintf(l, sizeof l, "%02d:%02d UTC", tm.tm_hour, tm.tm_min);
-    t48_text_right(s, W - 16, 17, F_BOLD, C_TEXT, l);
+    t48_text_right(s, W - 16, (T48_UI_HEAD_H - F_BOLD->height) / 2, F_BOLD, TH->on_head_dim, l);
 
     int y = 64;
     if (!url_ok) {
@@ -335,10 +334,9 @@ static void draw_page(void)
         t48_text_fit(s, 330, y, W - 346, F_MONO, C_TEXT, l);
     }
 
-    t48_fill(s, refresh_btn.x, refresh_btn.y, refresh_btn.w, refresh_btn.h, f.busy ? C_LINE : C_BTN);
-    t48_fill(s, refresh_btn.x, refresh_btn.y, refresh_btn.w, 2, C_BTN_HI);
-    t48_text_centre(s, refresh_btn.x + refresh_btn.w / 2, refresh_btn.y + (refresh_btn.h - F_BOLD->height) / 2, F_BOLD,
-                    C_TEXT, f.busy ? "Reading..." : refresh_btn.label);
+    /* a button as the shell draws one in this theme */
+    t48_ui_btn(s, refresh_btn.x, refresh_btn.y, refresh_btn.w, refresh_btn.h, f.busy ? "Reading" : refresh_btn.label,
+               f.busy ? T48_UI_OFF : T48_UI_PLAIN);
     t48_text(s, 190, 438, F_LABEL, C_DIM, "OK: refresh    X: close");
     /* the time of the last good read; a failure is said at the top instead */
     if (f.busy && !have_data) t48_text_right(s, W - 16, 438, F_LABEL, C_DIM, "fetching...");
@@ -421,6 +419,9 @@ int main(void)
             case T48_EV_RESUME:
                 paused = 0;
                 start_fetch();  /* fresh data straight away */
+                redraw = 1;
+                break;
+            case T48_EV_THEME:  /* the owner changed the look */
                 redraw = 1;
                 break;
             case T48_EV_QUIT:

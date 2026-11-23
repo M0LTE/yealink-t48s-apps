@@ -9,7 +9,10 @@ A LinBPQ packet node at a glance: open AX.25 links, who is connected, and the ne
 
 OK or Refresh reads the node at once. X closes the app.
 
+It wears the owner's theme: the shell's own header and button, and the theme's colours and fonts.
+
 ![live](screenshots/live.png)
+![in Directory](screenshots/directory.png)
 ![node not reachable](screenshots/unreachable.png)
 
 Moved from the firmware repo's `native/t48ui.c`, the GB7RDG links screen that ran beside Yealink's own phone software.

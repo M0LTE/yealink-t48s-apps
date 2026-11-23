@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /* hello: the smallest useful app, and the one to copy when starting a new one.
  * It says hello to whoever the "name" setting names, moves a box with the
- * arrow keys or a touch, and leaves on a short press of X. */
+ * arrow keys or a touch, and leaves on a short press of X. Its colours are
+ * the theme's (Settings, Screen, Theme), so it looks like the rest of the
+ * phone; the fonts follow the theme by themselves. */
 #include <stdio.h>
 #include "t48.h"
 
-#define C_BG T48_RGB(16, 22, 34)
-#define C_TEXT T48_RGB(232, 238, 246)
-#define C_DIM T48_RGB(130, 146, 170)
-#define C_BOX T48_RGB(255, 176, 60)
 #define BOX 60
 
 static t48_surface *s;
@@ -18,12 +16,13 @@ static char status[64] = "Arrows or a touch move the box";
 static void draw(void)
 {
     char line[96];
-    t48_fill(s, 0, 0, s->w, s->h, C_BG);
+    const t48_theme *th = t48_theme_now();  /* colours by what they are for: ground, ink, quiet ink, lit */
+    t48_fill(s, 0, 0, s->w, s->h, th->bg);
     snprintf(line, sizeof line, "Hello, %s", t48_setting("name", "world"));
-    t48_text_centre(s, s->w / 2, 60, &t48_font_big, C_TEXT, line);
-    t48_text_centre(s, s->w / 2, 130, &t48_font_normal, C_DIM, status);
-    t48_round_fill(s, bx, by, BOX, BOX, 12, C_BOX);
-    t48_text_centre(s, s->w / 2, 440, &t48_font_small, C_DIM, "X: close     hold X: home");
+    t48_text_centre(s, s->w / 2, 60, &t48_font_big, th->text, line);
+    t48_text_centre(s, s->w / 2, 130, &t48_font_normal, th->dim, status);
+    t48_round_fill(s, bx, by, BOX, BOX, th->radius, th->accent);
+    t48_text_centre(s, s->w / 2, 440, &t48_font_small, th->dim, "X: close     hold X: home");
     t48_damage_all();  /* simplest: say the whole screen changed */
 }
 
@@ -62,6 +61,7 @@ int main(void)
             t48_paused();                    /* nothing to tidy up: freeze now */
             break;
         case T48_EV_RESUME:
+        case T48_EV_THEME:                   /* the owner changed the look: draw in the new one */
             draw();
             break;
         case T48_EV_QUIT:

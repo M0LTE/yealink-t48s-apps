@@ -9,7 +9,10 @@ Live receive waterfall of a [pdn-soundmodem](https://github.com/M0LTE/pdn-soundm
 
 OK tries again at once while it cannot connect. X closes the details, then the app.
 
+The header and the list of frames wear the owner's theme. The waterfall and spectrum are an instrument and stay dark in every theme.
+
 ![live](screenshots/live.png)
+![in Two-tone](screenshots/twotone.png)
 ![a frame's details](screenshots/frame-details.png)
 ![no station](screenshots/no-station.png)
 

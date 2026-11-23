@@ -1,7 +1,7 @@
 {
   "id": "links",
   "name": "Node links",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A LinBPQ packet node at a glance: open links, sessions and neighbours",
   "api": 1,
   "exec": "links",

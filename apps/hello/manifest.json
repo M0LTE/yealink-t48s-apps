@@ -1,7 +1,7 @@
 {
   "id": "hello",
   "name": "Hello",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "The smallest useful app: copy it to start your own",
   "api": 1,
   "exec": "hello",
