@@ -27,8 +27,8 @@
 #define HEAD_R 18
 #define FRAME_MS 33
 #define STEP_SLOWEST 170        /* ms a cell at the start */
-#define STEP_FASTEST 75
-#define STEP_GAIN 3             /* ms quicker for each apple */
+#define STEP_FASTEST 90
+#define STEP_GAIN 2             /* ms quicker for each apple */
 #define STEP_TITLE 150
 #define SWIPE 28                /* pixels a finger moves before it is a swipe */
 #define DYING_MS 820
@@ -595,7 +595,8 @@ static void touch(int st, int x, int y)
     static int x0, y0, swiped, down;
     if (state != PLAY) {
         int bx = (W - BOX_W) / 2;
-        if (st != T48_TOUCH_DOWN) { down = 0; return; }
+        down = 0;
+        if (st != T48_TOUCH_DOWN) return;
         if (state == TITLE ? x >= bx && x < bx + BOX_W && y >= box_y() && y < box_y() + box_h()
                            : abs(x - W / 2) <= BTN_W / 2 + 10 && y >= btn_y() - 10 && y < btn_y() + BTN_H + 10) go();
         return;
