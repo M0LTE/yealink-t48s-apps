@@ -2,7 +2,7 @@
   "id": "nes",
   "name": "NES",
   "version": "0.1.0",
-  "description": "Plays NES games: three come with it, more from a USB stick",
+  "description": "Plays NES games: two built in, more from the data folder or USB",
   "api": 1,
   "exec": "nes",
   "icon": "icon.ppm",
