@@ -2,11 +2,12 @@
 /*
  * nesrun: the core without the phone, for measuring and testing.
  *
- *   nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k FRAME:BUTTONS:LENGTH,...] [-n] [-t LOG]
+ *   nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k FRAME:BUTTONS:LENGTH,...] [-n] [-c] [-t LOG] [-b]
  *
  * Runs FRAMES frames (600 unless said) as fast as it can, drawing each at the
  * app's size into memory, and prints frames a second. -n draws nothing (the
- * cost of a skipped frame). -k holds pad BUTTONS (NES_* bits, as a number)
+ * cost of a skipped frame). -c leaves out lines that have not changed, as
+ * the app does. -k holds pad BUTTONS (NES_* bits, as a number)
  * from FRAME for LENGTH frames. -s saves the last picture. -t runs nestest's
  * automatic mode and compares each instruction with its log. -b runs one of
  * blargg's test ROMs until it reports at $6000, and prints what it says.
@@ -62,7 +63,7 @@ int main(int argc, char **argv)
 {
     const char *rom = NULL, *shot = NULL, *keys = "", *log = NULL, *err;
     int frames = 600, draw = 1, blargg = 0;
-    struct scale_target target = {screen, 512};
+    struct scale_target target = {.px = screen, .stride = 512};
     nes_t *n = calloc(1, sizeof *n);
     uint8_t *data;
     long len;
@@ -75,10 +76,15 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-k") && i + 1 < argc) keys = argv[++i];
         else if (!strcmp(argv[i], "-t") && i + 1 < argc) log = argv[++i];
         else if (!strcmp(argv[i], "-n")) draw = 0;
+        else if (!strcmp(argv[i], "-c")) {
+            target.seen = malloc(SCALE_SEEN_BYTES);
+            target.seen_rgb = malloc(SCALE_SEEN_RGB_BYTES);
+            memset(target.seen, 0xFF, SCALE_SEEN_BYTES);
+        }
         else if (!strcmp(argv[i], "-b")) blargg = 1;
         else rom = argv[i];
     }
-    if (!rom || !n || !(f = fopen(rom, "rb"))) return fprintf(stderr, "usage: nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k F:B:L,...] [-n] [-t LOG]\n"), 2;
+    if (!rom || !n || !(f = fopen(rom, "rb"))) return fprintf(stderr, "usage: nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k F:B:L,...] [-n] [-c] [-t LOG] [-b]\n"), 2;
     fseek(f, 0, SEEK_END);
     len = ftell(f);
     rewind(f);

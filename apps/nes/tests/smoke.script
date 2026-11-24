@@ -1,0 +1,43 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The list, a game played with held keys, the menu, a saved state put back,
+# and out again.
+waitframe 5000
+expect app
+shot build/list.png
+key down
+key down
+key up
+waitframe 2000
+key ok
+wait 2500
+shot build/title.png
+key hash
+wait 1500
+key hash
+wait 2000
+keydown left
+keydown ok
+wait 600
+keyup ok
+keyup left
+wait 300
+shot build/game.png
+key x
+waitframe 2000
+shot build/menu.png
+key down
+key ok
+waitframe 2000
+shot build/saved.png
+run test -s build/sim/nes/dabg.state
+key down
+key ok
+wait 500
+key x
+waitframe 2000
+key up
+key ok
+waitframe 2000
+expectpixel 5 5 bg
+key x
+waitscreen launcher 3000
