@@ -40,7 +40,6 @@ static int nroms, sel, top;
 /* what the bundled games are called */
 static const char *const titles[][2] = {
     {"thwaite", "Thwaite"},
-    {"dabg", "Double Action Blaster Guys"},
     {"croom", "Concentration Room"},
 };
 

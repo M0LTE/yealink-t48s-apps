@@ -8,6 +8,8 @@ CFLAGS = -O2
 # a whole path: the simulator hands the data folder to the app as it was given,
 # and the app runs from its own folder
 O = $(CURDIR)/build
+# tests/sources.script makes a pretend USB stick and lists it here
+export NES_MOUNTS = $(O)/mounts
 include $(T48_SDK)/share/t48/app.mk
 
 # nesrun: the core without the phone, for measuring and for test ROMs
