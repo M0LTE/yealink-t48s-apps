@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Wears the owner's theme, and changes with it in the middle of a game.
+waitframe 5000
+expect app
+expectstate theme switchboard
+expectpixel 5 5 000000
+run printf 'seed 7\nstep 500\n' > build/sim/snake/test
+key ok
+waitpixel 343 284 good 8000
+run echo theme=directory > build/sim/screen
+waitstate theme directory 3000
+waitpixel 5 5 FFCE00 3000
+shot build/theme-directory.png
+run echo theme=twotone > build/sim/screen
+waitstate theme twotone 3000
+waitpixel 5 5 1C3557 3000
+shot build/theme-twotone.png
+# on into the wall
+waitpixel 310 310 bg 15000
+wait 100
+shot build/theme-twotone-over.png
+key x
+wait 300
+shot build/theme-twotone-title.png
+key x
+waitscreen launcher 3000

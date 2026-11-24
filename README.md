@@ -7,9 +7,11 @@ Apps for the open firmware for the Yealink SIP-T48S desk phone: [M0LTE/yealink-t
 | [hello](apps/hello) | The smallest useful app. Copy it to start your own. |
 | [waterfall](apps/waterfall) | Live receive waterfall and recent frames of a pdn-soundmodem station (GB7RDG unless you change its address). Tap a frame for its details. |
 | [links](apps/links) | A LinBPQ packet node at a glance: open links, sessions and neighbours (GB7RDG unless you change its address). |
+| [snake](apps/snake) | The classic game: eat apples, grow, get faster. Keys or touch. |
 
 ![waterfall](apps/waterfall/screenshots/live.png)
 ![links](apps/links/screenshots/live.png)
+![snake](apps/snake/screenshots/playing.png)
 
 ## The feed
 
