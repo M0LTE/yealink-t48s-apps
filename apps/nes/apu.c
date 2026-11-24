@@ -7,6 +7,7 @@
  * is a matter of adding the envelopes, sweeps and timers at the two marked
  * places and mixing what they make.
  */
+#include <limits.h>
 #include "nes.h"
 
 static const uint8_t len_table[32] = {10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
@@ -103,8 +104,9 @@ uint8_t apu_read_status(nes_t *n)
 {
     struct nes_apu *a = &n->st.apu;
     struct nes_cpu *c = &n->st.cpu;
+    int frame_irq_early = !a->mode5 && !a->irq_off && a->seq == steps[0][3] - 1;   /* the flag is up a cycle before the IRQ */
     unsigned r = (a->len[0] ? 1 : 0) | (a->len[1] ? 2 : 0) | (a->len[2] ? 4 : 0) | (a->len[3] ? 8 : 0) |
-                 (a->dmc_left ? 0x10 : 0) | ((c->irq_line & IRQ_FRAME) ? 0x40 : 0) | ((c->irq_line & IRQ_DMC) ? 0x80 : 0);
+                 (a->dmc_left ? 0x10 : 0) | ((c->irq_line & IRQ_FRAME) || frame_irq_early ? 0x40 : 0) | ((c->irq_line & IRQ_DMC) ? 0x80 : 0);
     c->irq_line &= (uint8_t)~IRQ_FRAME;
     return (uint8_t)r;
 }
@@ -146,11 +148,19 @@ void apu_write(nes_t *n, unsigned addr, unsigned v)
         a->mode5 = v >> 7;
         a->irq_off = v & 0x40;
         if (a->irq_off) c->irq_line &= (uint8_t)~IRQ_FRAME;
-        a->seq = 0;
+        a->seq = -3;    /* the sequence restarts a few cycles after the write */
         if (a->mode5) {
             quarter_frame(a);
             half_frame(a);
         }
         break;
     }
+}
+
+/* When the frame IRQ will next be raised, so the CPU can be stopped there. */
+int32_t apu_next_irq(const nes_t *n)
+{
+    const struct nes_apu *a = &n->st.apu;
+    if (a->mode5 || a->irq_off) return INT32_MAX;
+    return a->clk + (steps[0][3] - a->seq) * 3;
 }

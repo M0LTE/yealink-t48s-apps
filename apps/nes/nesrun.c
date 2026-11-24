@@ -8,7 +8,8 @@
  * app's size into memory, and prints frames a second. -n draws nothing (the
  * cost of a skipped frame). -k holds pad BUTTONS (NES_* bits, as a number)
  * from FRAME for LENGTH frames. -s saves the last picture. -t runs nestest's
- * automatic mode and compares each instruction with its log.
+ * automatic mode and compares each instruction with its log. -b runs one of
+ * blargg's test ROMs until it reports at $6000, and prints what it says.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -60,7 +61,7 @@ static int nestest(nes_t *n, const char *log)
 int main(int argc, char **argv)
 {
     const char *rom = NULL, *shot = NULL, *keys = "", *log = NULL, *err;
-    int frames = 600, draw = 1;
+    int frames = 600, draw = 1, blargg = 0;
     struct scale_target target = {screen, 512};
     nes_t *n = calloc(1, sizeof *n);
     uint8_t *data;
@@ -74,6 +75,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-k") && i + 1 < argc) keys = argv[++i];
         else if (!strcmp(argv[i], "-t") && i + 1 < argc) log = argv[++i];
         else if (!strcmp(argv[i], "-n")) draw = 0;
+        else if (!strcmp(argv[i], "-b")) blargg = 1;
         else rom = argv[i];
     }
     if (!rom || !n || !(f = fopen(rom, "rb"))) return fprintf(stderr, "usage: nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k F:B:L,...] [-n] [-t LOG]\n"), 2;
@@ -95,7 +97,18 @@ int main(int argc, char **argv)
             if (sscanf(k, "%d:%d:%d", &at, &b, &l) == 3 && i >= at && i < at + l) pad |= (unsigned)b;
         }
         nes_frame(n, pad, draw || i == frames - 1);
+        if (blargg && !memcmp(n->st.prg_ram + 1, "\xDE\xB0\x61", 3)) {
+            const uint8_t *r = n->st.prg_ram;
+            if (r[0] == 0x81) {
+                for (int j = 0; j < 10; j++) nes_frame(n, 0, 0);
+                nes_reset(n, 0);
+            } else if (r[0] < 0x80) {
+                printf("%s: %d %s\n", rom, r[0], (const char *)r + 4);
+                return r[0];
+            }
+        }
     }
+    if (blargg) return printf("%s: no result\n", rom), 1;
     t = now() - t0;
     printf("%d frames in %.3f s: %.0f fps, %.2f ms a frame, mapper %d\n", frames, t, frames / t, t * 1000 / frames, n->mapper);
     if (shot && (f = fopen(shot, "wb"))) {

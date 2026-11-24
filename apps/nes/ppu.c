@@ -68,6 +68,15 @@ static uint8_t mem_read(nes_t *n, unsigned a)
     return n->nt[(a >> 10) & 3][a & 0x3FF];
 }
 
+/* after a read or write of $2007 */
+static void data_step(nes_t *n)
+{
+    struct nes_ppu *p = &n->st.ppu;
+    unsigned v = p->v + ((p->ctrl & 4) ? 32 : 1);
+    if (~p->v & v & 0x1000) mapper_scanline(n);
+    p->v = (uint16_t)v;
+}
+
 uint8_t ppu_read(nes_t *n, unsigned reg)
 {
     struct nes_ppu *p = &n->st.ppu;
@@ -97,7 +106,7 @@ uint8_t ppu_read(nes_t *n, unsigned reg)
             r = p->pal[a] & ((p->mask & 1) ? 0x30 : 0x3F);
             p->rdbuf = mem_read(n, (p->v & 0x3FFF) - 0x1000);
         }
-        p->v = (uint16_t)(p->v + ((p->ctrl & 4) ? 32 : 1));
+        data_step(n);
         return p->latch = (uint8_t)r;
     }
     return p->latch;
@@ -110,7 +119,7 @@ void ppu_write(nes_t *n, unsigned reg, unsigned v)
     p->latch = (uint8_t)v;
     switch (reg) {
     case 0:
-        if ((v & 0x80) && !(p->ctrl & 0x80) && (p->status & 0x80)) n->st.cpu.nmi_pending = 1;
+        if ((v & 0x80) && !(p->ctrl & 0x80) && (p->status & 0x80)) n->st.cpu.nmi_pending = 2;
         p->ctrl = (uint8_t)v;
         p->t = (uint16_t)((p->t & 0xF3FF) | (v & 3) << 10);
         break;
@@ -135,6 +144,7 @@ void ppu_write(nes_t *n, unsigned reg, unsigned v)
             p->t = (uint16_t)((p->t & 0x00FF) | (v & 0x3F) << 8);
         } else {
             p->t = (uint16_t)((p->t & 0xFF00) | v);
+            if (~p->v & p->t & 0x1000) mapper_scanline(n);   /* MMC3 counts rises of this address line */
             p->v = p->t;
         }
         p->w ^= 1;
@@ -151,7 +161,7 @@ void ppu_write(nes_t *n, unsigned reg, unsigned v)
             p->pal[a] = v & 0x3F;
             ppu_palette_changed(n);
         }
-        p->v = (uint16_t)(p->v + ((p->ctrl & 4) ? 32 : 1));
+        data_step(n);
         break;
     }
 }
@@ -277,7 +287,7 @@ void ppu_line(nes_t *n, int y, int32_t line_clk, int draw)
                 taken[xx] = 1;
                 if (list[k] == 0 && s0_here && (buf[xx] & 3) && xx != 255 && !p->s0_found) {
                     p->s0_found = 1;
-                    p->s0_clk = line_clk + (int32_t)xx + 2;
+                    p->s0_clk = line_clk + (int32_t)xx + 6;   /* the CPU's clock here is the end of its instruction, a cycle past the read */
                 }
                 if (!(at & 0x20) || !(buf[xx] & 3)) buf[xx] = (uint8_t)(pal | c);
             }

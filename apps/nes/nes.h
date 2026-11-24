@@ -75,6 +75,7 @@ struct nes_mapper {
     int32_t last_wr;      /* clk of the last write: a second one in the same instruction is ignored */
     /* MMC3 */
     uint8_t sel, irq_latch, irq_count, irq_reload, irq_on;
+    uint8_t ram_ctl;      /* $A001: bit 7 cartridge RAM on, bit 6 read only */
 };
 
 /* everything a save state holds */
@@ -141,6 +142,7 @@ void apu_reset(nes_t *n);
 void apu_run(nes_t *n, int32_t clk);
 uint8_t apu_read_status(nes_t *n);
 void apu_write(nes_t *n, unsigned addr, unsigned v);
+int32_t apu_next_irq(const nes_t *n);
 
 /* cart.c */
 int mapper_supported(int mapper);
@@ -148,5 +150,6 @@ void mapper_reset(nes_t *n);
 void mapper_write(nes_t *n, unsigned addr, unsigned v);
 void mapper_sync(nes_t *n);           /* banks and mirroring from the registers */
 void mapper_scanline(nes_t *n);       /* MMC3's counter */
+int mapper_ram(const nes_t *n);       /* cartridge RAM at $6000: 0 off, 1 read only, 2 on */
 
 #endif

@@ -132,6 +132,7 @@ void mapper_reset(nes_t *n)
     if (n->mapper == 4) {
         static const uint8_t r[8] = {0, 2, 4, 5, 6, 7, 0, 1};
         memcpy(m->reg, r, 8);
+        m->ram_ctl = 0x80;
     }
     mapper_sync(n);
 }
@@ -165,7 +166,7 @@ void mapper_write(nes_t *n, unsigned addr, unsigned v)
         case 0x8000: m->sel = (uint8_t)v; break;
         case 0x8001: m->reg[m->sel & 7] = (uint8_t)v; break;
         case 0xA000: m->mirror = (v & 1) ? MIRROR_H : MIRROR_V; break;
-        case 0xA001: return;
+        case 0xA001: m->ram_ctl = (uint8_t)v; return;
         case 0xC000: m->irq_latch = (uint8_t)v; return;
         case 0xC001: m->irq_count = 0; m->irq_reload = 1; return;
         case 0xE000: m->irq_on = 0; n->st.cpu.irq_line &= (uint8_t)~IRQ_MAPPER; return;
@@ -194,4 +195,12 @@ void mapper_scanline(nes_t *n)
         m->irq_count--;
     }
     if (!m->irq_count && m->irq_on) n->st.cpu.irq_line |= IRQ_MAPPER;
+}
+
+int mapper_ram(const nes_t *n)
+{
+    const struct nes_mapper *m = &n->st.map;
+    if (n->mapper == 1) return (m->prg & 0x10) ? 0 : 2;
+    if (n->mapper == 4) return !(m->ram_ctl & 0x80) ? 0 : (m->ram_ctl & 0x40) ? 1 : 2;
+    return 2;
 }

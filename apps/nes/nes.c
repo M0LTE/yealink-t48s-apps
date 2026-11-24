@@ -85,7 +85,7 @@ uint8_t nes_read_io(nes_t *n, unsigned addr)
     struct nes_state *s = &n->st;
     unsigned r;
     if (addr < 0x4000) return ppu_read(n, addr & 7);
-    if (addr >= 0x6000) return s->prg_ram[addr & 0x1FFF];
+    if (addr >= 0x6000) return mapper_ram(n) ? s->prg_ram[addr & 0x1FFF] : (uint8_t)(addr >> 8);
     switch (addr) {
     case 0x4015:
         apu_run(n, s->cpu.clk);
@@ -109,7 +109,7 @@ void nes_write_io(nes_t *n, unsigned addr, unsigned v)
     } else if (addr < 0x4000) {
         ppu_write(n, addr & 7, v);
     } else if (addr >= 0x6000) {
-        s->prg_ram[addr & 0x1FFF] = (uint8_t)v;
+        if (mapper_ram(n) == 2) s->prg_ram[addr & 0x1FFF] = (uint8_t)v;
     } else if (addr == 0x4014) {
         /* copy a page to the sprite table; the CPU waits 513 cycles */
         unsigned page = v << 8;
@@ -135,8 +135,22 @@ void nes_write_io(nes_t *n, unsigned addr, unsigned v)
 
 static void run(nes_t *n, int32_t until)
 {
+    int32_t irq = apu_next_irq(n);
+    if (irq < until && irq > n->st.cpu.clk) {
+        cpu_run(n, irq);
+        apu_run(n, n->st.cpu.clk);
+    }
     cpu_run(n, until);
     apu_run(n, n->st.cpu.clk);
+}
+
+/* MMC3 counts a line when the PPU goes from the background's patterns to the
+ * sprites': at dot 260 as nearly every game sets it up, or at 324 with the
+ * two tables the other way round. */
+static void mmc3_line(nes_t *n, int32_t base)
+{
+    if ((n->st.ppu.ctrl & 0x38) == 0x10) run(n, base + 324);
+    mapper_scanline(n);
 }
 
 void nes_frame(nes_t *n, unsigned pad1, int draw)
@@ -156,8 +170,8 @@ void nes_frame(nes_t *n, unsigned pad1, int draw)
     run(n, base + 1);
     ppu_prerender(n);
     run(n, base + 260);
-    if (s->ppu.mask & 0x18) mapper_scanline(n);
-    run(n, base + 280);
+    if ((s->ppu.mask & 0x18) && n->mapper == 4) mmc3_line(n, base);
+    if (s->cpu.clk < base + 280) run(n, base + 280);
     ppu_frame_start(n);
     run(n, base + NES_DOTS_PER_LINE);
     base += NES_DOTS_PER_LINE;
@@ -167,7 +181,7 @@ void nes_frame(nes_t *n, unsigned pad1, int draw)
         run(n, base + 260);
         if (s->ppu.mask & 0x18) {
             ppu_hblank(n);
-            mapper_scanline(n);
+            if (n->mapper == 4) mmc3_line(n, base);
         }
         run(n, base + NES_DOTS_PER_LINE);
     }

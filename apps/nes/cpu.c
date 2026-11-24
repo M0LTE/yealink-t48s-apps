@@ -36,7 +36,7 @@ void cpu_run(nes_t *n, int32_t until)
     unsigned a = c->a, x = c->x, y = c->y, s = c->s;
     /* the flags apart: Z is "fz is zero", N is bit 7 of fn */
     unsigned fc = c->p & 1, fz = !(c->p & 2), fi = c->p & 4, fd = c->p & 8, fv = c->p & 0x40, fn = c->p;
-    unsigned ea = 0, m, t, u;
+    unsigned ea = 0, m, t, u, hold = 0;   /* hold: CLI and PLP let one instruction by before an IRQ */
 
 /* registers and cartridge RAM go the slow way, and may read or move the clock */
 #define IO_RD(ad) (c->clk = clk, t = nes_read_io(n, (ad)), clk = c->clk, t)
@@ -81,13 +81,18 @@ void cpu_run(nes_t *n, int32_t until)
     while (clk < until) {
         unsigned op;
         if (unlikely(c->nmi_pending)) {
-            c->nmi_pending = 0;
-            INTERRUPT(0xFFFA, GETP());
-            clk += 21;
-        } else if (unlikely(c->irq_line) && !fi) {
+            if (c->nmi_pending > 1) {
+                c->nmi_pending = 1;     /* asked for by a write to $2000: one more instruction first */
+            } else {
+                c->nmi_pending = 0;
+                INTERRUPT(0xFFFA, GETP());
+                clk += 21;
+            }
+        } else if (unlikely(c->irq_line) && !fi && !hold) {
             INTERRUPT(0xFFFE, GETP());
             clk += 21;
         }
+        hold = 0;
         op = RD(pc);
         pc++;
         clk += cycles[op] * 3;
@@ -134,7 +139,16 @@ void cpu_run(nes_t *n, int32_t until)
         case 0x48: PUSH(a); break;
         case 0x68: a = PULL(); NZ(a); break;
         case 0x08: PUSH(GETP() | 0x10); break;
-        case 0x28: SETP(PULL()); break;
+        case 0x28:   /* PLP: the IRQ line is looked at with the flag as it was */
+            u = fi;
+            SETP(PULL());
+            if (u) {
+                hold = 1;
+            } else if (fi && unlikely(c->irq_line)) {
+                INTERRUPT(0xFFFE, GETP());
+                clk += 21;
+            }
+            break;
         /* logic */
         case 0x29: LOAD(IMM) a &= m; NZ(a); break;
         case 0x25: LOAD(ZP) a &= m; NZ(a); break;
@@ -244,8 +258,15 @@ void cpu_run(nes_t *n, int32_t until)
         /* flags */
         case 0x18: fc = 0; break;
         case 0x38: fc = 1; break;
-        case 0x58: fi = 0; break;
-        case 0x78: fi = 4; break;
+        case 0x58: fi = 0; hold = 1; break;
+        case 0x78:   /* SEI: an IRQ already asking still gets in, with the flag set in what it pushes */
+            if (unlikely(c->irq_line) && !fi) {
+                fi = 4;
+                INTERRUPT(0xFFFE, GETP());
+                clk += 21;
+            }
+            fi = 4;
+            break;
         case 0xB8: fv = 0; break;
         case 0xD8: fd = 0; break;
         case 0xF8: fd = 8; break;
