@@ -10,7 +10,7 @@ The classic. Eat apples, grow, and do not run into yourself or the wall. Each ap
 
 `walls` (App settings, Walls) is on to start with. Off, the snake leaves one edge and comes back in at the opposite one, and that game has a best score of its own.
 
-No sound yet: it waits for apps to be given an audio stream.
+A few short sounds, made as they play: a blip for each apple that climbs as the snake grows, a tick for a turn, a thud for a crash and a few notes for a new best. The volume keys set how loud. On firmware from before apps had sound (API level 4) the game is the same, silent.
 
 ![playing](screenshots/playing.png)
 ![the start](screenshots/title.png)
@@ -21,7 +21,7 @@ No sound yet: it waits for apps to be given an audio stream.
 
 ## How it is made
 
-One C file on libt48, API level 2. The game moves a cell at a time; the picture slides the head and the tail between cells 30 times a second, repainting only the parts that changed. Every rectangle is finished off screen and then copied, so nothing half drawn is shown; `present()` is the one place that would change for a full-screen, double-buffered mode.
+libt48, API level 2: `snake.c` is the game and `sfx.c` its sounds (`make wav` writes them all to `build/snake.wav`). The game moves a cell at a time; the picture slides the head and the tail between cells 30 times a second, repainting only the parts that changed. Every rectangle is finished off screen and then copied, so nothing half drawn is shown; `present()` is the one place that would change for a full-screen, double-buffered mode.
 
 The best scores are in `best` in the app's data folder.
 

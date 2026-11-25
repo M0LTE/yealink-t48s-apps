@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /* snake: the classic. Arrows, 2 4 6 8, a swipe or a tap beside the head steer;
  * OK pauses; X goes back. It gets faster as the snake grows, and the best
- * score is kept in the app's data folder.
+ * score is kept in the app's data folder. Its sounds are in sfx.c.
  *
  * How it draws: the whole picture is one function, scene(), that can paint any
  * rectangle of the screen. Each frame the few rectangles that changed are
@@ -17,6 +17,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "t48.h"
+#include "sfx.h"
 
 #define CELL 40                 /* pixels */
 #define MAXC 32
@@ -175,6 +176,7 @@ static void steer(int d)
     int last = nturns ? turns[nturns - 1] : dir;
     if (state != PLAY || d == last || d == (last + 2) % 4 || nturns == 2) return;
     turns[nturns++] = d;
+    sfx_turn();
 }
 
 static void end_game(int now_state, long long now)
@@ -182,6 +184,8 @@ static void end_game(int now_state, long long now)
     state = now_state;
     die_at = over_at = now;
     if (score > best) { best = score; new_best = 1; best_file(1); }
+    if (now_state == DYING) sfx_crash();
+    else if (won && new_best) sfx_best();
 }
 
 /* one cell on. On the title screen the snake walks round the edge by itself. */
@@ -209,6 +213,7 @@ static void step(long long now)
         tail_x = -1;
         eat_x = nx; eat_y = ny;
         score++;
+        sfx_eat(score);
         if (!test_step && step_ms - STEP_GAIN >= STEP_FASTEST) step_ms -= STEP_GAIN;
     } else {
         tail_x = sx[t]; tail_y = sy[t];
@@ -493,7 +498,12 @@ static void frame(void)
         long long t = now - die_at;
         int b = t < 80 ? (int)(t / 8) : t < 160 ? (int)((160 - t) / 8) : 0;
         int f = t >= 160 && ((t - 160) / 130) % 2 == 0;
-        if (t >= DYING_MS) { state = OVER; over_at = now; bump = flash = 0; t48_timer(0, 0, 0); redraw(); return; }
+        if (t >= DYING_MS) {
+            state = OVER; over_at = now; bump = flash = 0;
+            if (new_best) sfx_best();
+            t48_timer(0, 0, 0); redraw();
+            return;
+        }
         if (f != flash) { flash = f; dirty(FX, FY, FW, FH); }
         if (b != bump) { bump = b; dirty_ends(); }
         return;
@@ -533,6 +543,7 @@ static void run(int on) { t48_timer(0, on ? FRAME_MS : 0, 1); }
 static void play(void)
 {
     new_game();
+    sfx_start();
     memset(was, 0, sizeof was);
     run(1);
     redraw();
@@ -642,6 +653,7 @@ int main(void)
     v = t48_setting("walls", "true");
     walls = !strcmp(v, "true") || !strcmp(v, "on") || !strcmp(v, "1");
     best_file(0);
+    sfx_init();
     title();
     flush();
 
@@ -660,6 +672,7 @@ int main(void)
             break;
         case T48_EV_PAUSE:          /* Home, or a call: the game waits */
             pause_game();
+            sfx_quiet();
             run(0);
             flush();
             t48_paused();
