@@ -92,6 +92,7 @@ struct nes_sound {
     int32_t pulse_level, tnd_level;   /* what the two halves of the mixer last gave */
     int32_t sum, hp1, hp2;        /* the running level, and the two high-pass filters */
     int32_t c1, c2;
+    uint8_t nfrac;                /* fast noise: eighths of its last slot it was high */
     int rate;
     uint32_t buf[NES_SND_LEN + NES_SND_TAPS];
 };
@@ -174,6 +175,7 @@ void apu_run(nes_t *n, int32_t clk);
 uint8_t apu_read_status(nes_t *n);
 void apu_write(nes_t *n, unsigned addr, unsigned v);
 int32_t apu_next_irq(const nes_t *n);
+int apu_dmc_busy(const nes_t *n);
 /* Sound. Off until started: 16-bit mono at rate samples a second (8000 to
  * 48000), 0 for off again. nes_sound_read takes what the frames run so far
  * have made, at most max, and returns how many. nes_sound_tune bends the rate

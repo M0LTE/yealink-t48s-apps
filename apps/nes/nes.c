@@ -133,6 +133,9 @@ void nes_write_io(nes_t *n, unsigned addr, unsigned v)
     }
 }
 
+/* The APU is run when a register is touched. Between times it is only
+ * brought up to date when it has something to say to the CPU (an IRQ) or
+ * something to take from it (the DMC's cycles), and at the end of a frame. */
 static void run(nes_t *n, int32_t until)
 {
     int32_t irq = apu_next_irq(n);
@@ -141,7 +144,7 @@ static void run(nes_t *n, int32_t until)
         apu_run(n, n->st.cpu.clk);
     }
     cpu_run(n, until);
-    apu_run(n, n->st.cpu.clk);
+    if (apu_dmc_busy(n) || apu_next_irq(n) <= n->st.cpu.clk) apu_run(n, n->st.cpu.clk);
 }
 
 /* MMC3 counts a line when the PPU goes from the background's patterns to the
@@ -188,6 +191,7 @@ void nes_frame(nes_t *n, unsigned pad1, int draw)
 
     /* 240: nothing happens */
     run(n, base + NES_DOTS_PER_LINE);
+    apu_run(n, s->cpu.clk);
 
     if (s->ppu.s0_clk != INT32_MAX) {
         s->ppu.status |= 0x40;

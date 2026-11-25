@@ -248,7 +248,20 @@ static void dmc_clock(nes_t *n)
     }
 }
 
-/* triangle, noise and DMC, which share the mixer's other curve */
+/* Noise faster than this many CPU cycles a step is not followed flip by flip:
+ * that is up to 220000 steps a second for a hiss. It is taken a slot at a
+ * time instead, and the slot's level is the share of it the noise was high. */
+#define NOISE_SLOT 32
+
+/* the mixer's other curve: triangle, noise (high for nfrac eighths of the time) and DMC */
+static inline int32_t tnd_level(unsigned tri_out, unsigned nvol, unsigned nfrac, unsigned dac)
+{
+    int32_t lo = tnd_mix[3 * tri_out + dac];
+    if (!nfrac) return lo;
+    return lo + (((int32_t)tnd_mix[3 * tri_out + 2 * nvol + dac] - lo) * (int32_t)nfrac >> 3);
+}
+
+/* triangle, noise and DMC */
 static void run_tnd(nes_t *n, int32_t cyc)
 {
     struct nes_apu *a = &n->st.apu;
@@ -258,13 +271,15 @@ static void run_tnd(nes_t *n, int32_t cyc)
     /* a triangle too high to hear is held where it is: stepping it would only make a whine */
     int tri_on = s->on && a->len[2] && a->lin && tri_period >= 2, noise_on = s->on && nvol;
     int32_t tri_step = (int32_t)tri_period + 1, noise_step = noise_periods[a->reg[0x0E] & 15], dmc_step = dmc_rates[a->dmc_rate];
+    int fast = noise_step < NOISE_SLOT, per_slot = NOISE_SLOT / noise_step;
     int32_t tt = tri_on ? a->tri_timer : INT32_MAX, tn = noise_on ? a->noise_timer : INT32_MAX, td = a->dmc_timer - 1;
     unsigned tri_seq = a->tri_seq, lfsr = a->lfsr, tap = (a->reg[0x0E] & 0x80) ? 6 : 1;
-    unsigned tri_out = tri_seq < 16 ? 15 - tri_seq : tri_seq - 16, noise_out = (lfsr & 1) ? 0 : nvol;
+    unsigned tri_out = tri_seq < 16 ? 15 - tri_seq : tri_seq - 16;
+    unsigned nfrac = !noise_on ? 0 : fast ? s->nfrac : (lfsr & 1) ? 0 : 8;
     int32_t level;
 
     if (s->on) {
-        level = tnd_mix[3 * tri_out + 2 * noise_out + a->dmc_dac];
+        level = tnd_level(tri_out, nvol, nfrac, a->dmc_dac);
         if (s->fresh) s->tnd_level = level;
         if (level != s->tnd_level) {
             step_at(s, 0, level - s->tnd_level);
@@ -282,10 +297,21 @@ static void run_tnd(nes_t *n, int32_t cyc)
             tri_out = tri_seq < 16 ? 15 - tri_seq : tri_seq - 16;
             tt += tri_step;
         } else if (which == 1) {
-            lfsr = lfsr >> 1 | ((lfsr ^ lfsr >> tap) & 1) << 14;
-            tn += noise_step;
-            if (((lfsr & 1) ? 0 : nvol) == noise_out) continue;
-            noise_out ^= nvol;
+            unsigned was = nfrac;
+            if (fast) {
+                unsigned high = 0;
+                for (int i = 0; i < per_slot; i++) {
+                    lfsr = lfsr >> 1 | ((lfsr ^ lfsr >> tap) & 1) << 14;
+                    high += ~lfsr & 1;
+                }
+                nfrac = high * 8 / (unsigned)per_slot;
+                tn += NOISE_SLOT;
+            } else {
+                lfsr = lfsr >> 1 | ((lfsr ^ lfsr >> tap) & 1) << 14;
+                nfrac = (lfsr & 1) ? 0 : 8;
+                tn += noise_step;
+            }
+            if (nfrac == was) continue;
         } else {
             unsigned was = a->dmc_dac;
             dmc_clock(n);
@@ -293,7 +319,7 @@ static void run_tnd(nes_t *n, int32_t cyc)
             if (a->dmc_dac == was) continue;
         }
         if (!s->on) continue;
-        level = tnd_mix[3 * tri_out + 2 * noise_out + a->dmc_dac];
+        level = tnd_level(tri_out, nvol, nfrac, a->dmc_dac);
         if (level != s->tnd_level) {
             step_at(s, now, level - s->tnd_level);
             s->tnd_level = level;
@@ -301,6 +327,7 @@ static void run_tnd(nes_t *n, int32_t cyc)
     }
     a->tri_seq = (uint8_t)tri_seq;
     a->lfsr = (uint16_t)lfsr;
+    s->nfrac = (uint8_t)nfrac;
     if (tri_on) a->tri_timer = tt - cyc;
     if (noise_on) a->noise_timer = tn - cyc;
     a->dmc_timer = td + 1 - cyc;
@@ -479,6 +506,13 @@ void apu_write(nes_t *n, unsigned addr, unsigned v)
 
 /* When the next IRQ will be raised (the frame sequencer's, or the DMC's as it
  * takes its last byte), so the CPU can be stopped there. */
+/* 1 while the DMC is reading a sample: it holds the CPU as it goes, so it
+ * cannot be left to catch up later. */
+int apu_dmc_busy(const nes_t *n)
+{
+    return n->st.apu.dmc_left || n->st.apu.dmc_buf_full;
+}
+
 int32_t apu_next_irq(const nes_t *n)
 {
     const struct nes_apu *a = &n->st.apu;
