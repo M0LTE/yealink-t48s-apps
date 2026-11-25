@@ -6,7 +6,7 @@ Real-time graphics on a desk phone, in the old demo style: a loop of about two a
 |---|---|
 | `*` | show or hide the frame rate |
 | left, right | previous, next part |
-| anything else, or a touch | leave |
+| any other key | leave |
 
 ![the knot](screenshots/knot.png)
 ![the tunnel](screenshots/tunnel.png)

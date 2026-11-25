@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Home freezes it; opening it again carries on drawing; a touch leaves.
+# Home freezes it; opening it again carries on drawing; a touch does nothing; X leaves.
 waitframe 5000
 expect app
 wait 500
@@ -12,4 +12,7 @@ waitframe 3000
 wait 500
 shot build/resumed.png
 touch 400 240
+wait 500
+expect app
+key x
 waitscreen launcher 3000

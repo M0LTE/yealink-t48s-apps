@@ -5,7 +5,7 @@
  * on the screen.
  *
  * Keys: * shows or hides the frame rate, left and right step through the
- * parts, anything else (or a touch) leaves.
+ * parts, any other key leaves. Touches are ignored.
  *
  * The timeline is laid out in bars of a tune that is not there yet (apps
  * cannot play audio): 125 beats a minute, four to the bar. When they can,
@@ -126,9 +126,6 @@ int main(void)
                 else if (ev.key == T48_KEY_RIGHT) { stats_part_end(cur); song = start_us[(cur + 1) % NPARTS]; }
                 else if (ev.key == T48_KEY_LEFT) { stats_part_end(cur); song = start_us[(cur + NPARTS - 1) % NPARTS]; }
                 else return 0;
-                break;
-            case T48_EV_TOUCH:
-                if (ev.state == T48_TOUCH_DOWN) return 0;
                 break;
             case T48_EV_PAUSE:
                 paused = 1;
