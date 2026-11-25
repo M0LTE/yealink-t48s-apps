@@ -14,7 +14,9 @@
  *   a crash     all three full, fading, and the red lamp at the top of the
  *               case flashes
  *
- * A level is set for every frame drawn, and only sent when it has changed.
+ * Levels are worked out for a frame and sent when they have changed, forty
+ * times a second at most: each costs the shell a write for every lamp, and a
+ * flash that takes 200 ms to die looks no smoother for more.
  * An older shell, or no permission: nothing here does anything. */
 #include "demo.h"
 #include "music.h"
@@ -24,8 +26,10 @@
 #define ROW_US (MUSIC_ROW_TICKS * MUSIC_TICK_US)
 #define BACK 8                  /* rows looked back over: the longest fade is over by then */
 #define KEYS (1u << T48_LAMP_HEADSET | 1u << T48_LAMP_MUTE | 1u << T48_LAMP_SPEAKER)
+#define APART_US 24000          /* between two sends, at least */
 
 static int sent[T48_LAMPS] = {-1, -1, -1, -1};
+static long long sent_at;
 
 void lamps_reset(void)
 {
@@ -50,7 +54,8 @@ static int hit(int ev) { return ev & (MUSIC_EV_SNARE | MUSIC_EV_TOM); }
 void lamps_frame(long long us)
 {
     int rows = music_rows();
-    if (!t48_lamps_ok() || rows <= 0) return;
+    long long now = now_us();
+    if (!t48_lamps_ok() || rows <= 0 || now - sent_at < APART_US) return;
     long long loop = (long long)rows * ROW_US;
     us = ((us % loop) + loop) % loop;
     int row = (int)(us / ROW_US);
@@ -93,6 +98,7 @@ void lamps_frame(long long us)
         if (lv[i] != sent[i]) mask |= i == T48_LAMP_MESSAGE ? 1u << i : KEYS;   /* the three key lamps go together */
     }
     if (!mask) return;
+    sent_at = now;
     /* the red lamp is the phone's own between flashes: a missed call still shows */
     if ((mask & 1u << T48_LAMP_MESSAGE) && !lv[T48_LAMP_MESSAGE]) {
         t48_lamps_release(1u << T48_LAMP_MESSAGE);
