@@ -57,7 +57,7 @@ ssh root@PHONE 'tar -C /data/apps -xzf -' < build/myapp-0.1.0.t48app
 
 It appears in the launcher. Settings go in `/data/config/apps/myapp.conf` as `key=value` lines until the phone has settings screens.
 
-**6. Get it into the feed:** a pull request adding `apps/myapp`. CI builds every app, runs its simulator tests and, once merged, publishes it.
+**6. Get it into the feed:** a pull request adding `apps/myapp`. CI builds every app, runs its simulator tests and, once merged, publishes it. What a pull request needs: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Other languages:** anything that becomes one static ARMv6 Linux program (soft-float, no shared libraries) and speaks the protocol is an app. The protocol is a few little-endian messages on a socket and a shared memory buffer. The SDK's cross compiler and musl are there for C; Rust (`arm-unknown-linux-musleabi`), Zig or Go (`GOARCH=arm GOARM=6`) can target the phone directly. `$T48_SDK/bin/t48-pack FOLDER OUTDIR` packages any app folder.
 
