@@ -8,7 +8,7 @@ Real-time graphics and a chiptune on a desk phone, in the old demo style: a loop
 | left, right | previous, next part |
 | any other key | leave |
 
-The volume keys set how loud it is. On firmware without sound for apps (before API level 4) it runs the same, silent.
+The volume keys set how loud it is. On firmware without sound for apps (before API level 4) it runs the same, silent. The phone's lamps keep time with the tune on firmware that lends them to apps (API level 5).
 
 ![the knot](screenshots/knot.png)
 ![the tunnel](screenshots/tunnel.png)
@@ -67,6 +67,7 @@ An original tune in A minor, written for this demo (`tune.c`): a block of bars f
 - **For a small loudspeaker:** the bass is written an octave up and is rich in harmonics, since the fundamental would not be heard; nothing under 100 Hz is sent; the top is soft; peaks stay under full scale and the odd one over the knee is squeezed, not clipped.
 - **In time** (`sound.c`): sound written now is heard about 65 ms later, and a frame drawn now is seen one or two refreshes later. A thread makes each tick of sound, works out when it will be heard and where the picture will be by then, and makes the tick a few samples shorter or longer to stay with it: the tempo gives a little, the pitch does not. Stepping to another part, or coming back from Home, the tune jumps, and each voice takes up the note it would be holding.
 - **The picture listens:** parts are told the kick, the snare and the bass, read from the score (so it is the same with no sound). The stars and solids flare on the kick, the plasma's colours jump, the rotozoomer is knocked back, and the wave the scroller rides, always there, swells with each bass note.
+- **So do the lamps** (`lamps.c`): the Speaker key's lamp flashes on each kick and glows with the bass, the Headset key's on each snare, the red Mute lamp between them swells and fades with the chords, a fill runs down the three a lamp a hit, and a crash lights them all and flashes the red lamp at the top of the case. Read from the score too, and set a frame behind the drawing, so they change as the picture does. On the phone (2026-11-25) they cost the shell 1.4% of the processor and the kernel under 1%, and the gem still runs at 67.8 frames a second.
 
 `make wav` writes the whole tune to `build/demo.wav` with the same player, sample for sample, to listen to on a PC.
 

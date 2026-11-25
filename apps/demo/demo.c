@@ -10,7 +10,8 @@
  * The timeline is laid out in the bars of the tune (music.c, tune.c): 125
  * beats a minute, four to the bar. The clock here moves by whole refreshes of
  * the screen and the tune is kept to it (sound.c), so on a phone with no
- * sound for apps everything but the sound is the same. */
+ * sound for apps everything but the sound is the same. The phone's lamps
+ * keep time with the tune too, where the shell lends them (lamps.c). */
 #include <stdio.h>
 #include "demo.h"
 #include "music.h"
@@ -141,6 +142,7 @@ int main(void)
             case T48_EV_RESUME:
                 paused = 0;
                 all_stale();
+                lamps_reset();
                 last = now_us();
                 break;
             case T48_EV_QUIT:
@@ -162,6 +164,7 @@ int main(void)
             fe_pace(parts[i].pace);
         }
         snd_sync(song, now + fe_ahead_us());
+        lamps_frame(song - fe_ahead_us());   /* a lamp changes at once; the frame drawn now is seen that much later */
         frame f;
         f.s = fe_begin(&f.buf);
         if (f.buf < 0) { f.buf = 0; all_stale(); }

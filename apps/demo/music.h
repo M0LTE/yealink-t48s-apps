@@ -69,4 +69,11 @@ typedef struct music_cue {
 } music_cue;
 void music_cue_at(long long us, music_cue *c);
 
+/* What the score has starting at a row of the loop (sixteen to the bar), for
+ * whoever wants more than the cue: MUSIC_EV_* added together; 0 for a row
+ * past the end. Soft hits (written with ?) are left out. */
+enum { MUSIC_EV_KICK = 1, MUSIC_EV_SNARE = 2, MUSIC_EV_TOM = 4, MUSIC_EV_CRASH = 8, MUSIC_EV_CHORD = 16, MUSIC_EV_BASS = 32 };
+int music_rows(void);                   /* rows in the loop */
+int music_row_events(int row);
+
 #endif
