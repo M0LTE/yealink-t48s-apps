@@ -441,3 +441,20 @@ void music_cue_at(long long us, music_cue *c)
     c->snare = fall(last_snare[row], us, 200);
     c->bass = fall(last_bass[row], us, 240);
 }
+
+int music_rows(void) { return nbars > 0 ? nbars * MUSIC_BAR_ROWS : 0; }
+
+int music_row_events(int row)
+{
+    if (row < 0 || row >= music_rows()) return 0;
+    int ev = 0, d = cells[CH_DRUM][row].note, h = cells[CH_HAT][row].note, c = cells[CH_CHORD][row].note, b = cells[CH_BASS][row].note;
+    if (cells[CH_DRUM][row].acc != 2) {
+        if (d == D_KICK || d == D_BOTH) ev |= MUSIC_EV_KICK;
+        if (d == D_SNARE || d == D_BOTH) ev |= MUSIC_EV_SNARE;
+        if (d >= D_TOM1 && d <= D_TOM3) ev |= MUSIC_EV_TOM;
+    }
+    if ((h == D_CRASH && cells[CH_HAT][row].acc != 2) || d == D_CRASH) ev |= MUSIC_EV_CRASH;
+    if (c && c != NOTE_OFF) ev |= MUSIC_EV_CHORD;
+    if (b && b != NOTE_OFF) ev |= MUSIC_EV_BASS;
+    return ev;
+}

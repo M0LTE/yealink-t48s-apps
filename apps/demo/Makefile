@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 APP = demo
-SRC = demo.c fe.c util.c r3d.c stars.c solid.c fx.c music.c tune.c sound.c
+SRC = demo.c fe.c util.c r3d.c stars.c solid.c fx.c music.c tune.c sound.c lamps.c
 EXTRA =
 # speed over size: the inner loops are the whole point
 CFLAGS = -O2 -fno-stack-protector

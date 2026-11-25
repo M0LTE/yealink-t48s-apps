@@ -122,6 +122,11 @@ void snd_sync(long long song_us, long long at_us);
 /* since the last call: what making the sound took, in ms a second of it (-1: no sound), and gaps heard */
 int snd_stats(int *gaps);
 
+/* ---------- the phone's lamps, in time with the tune (lamps.c) ---------- */
+
+void lamps_frame(long long song_us);   /* once a frame: where the tune is, as seen and heard now */
+void lamps_reset(void);                /* the shell has taken the lamps back: set them all again next time */
+
 /* ---------- shared layers ---------- */
 
 void stars_init(void);
