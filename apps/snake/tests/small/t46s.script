@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# A T46S: 480x272, no touch. The app is given the screen's own size and draws a board of
+# smaller cells for it. A game started, paused, and run into the wall.
+waitframe 5000
+expect app
+expectstate appsize 480x272
+shot build/t46s-title.png
+key ok
+wait 1500
+key down
+wait 600
+shot build/t46s-playing.png
+key ok
+wait 300
+shot build/t46s-paused.png
+key ok
+wait 6000
+shot build/t46s-over.png
+key x
+wait 300
+key x
+waitscreen launcher 3000

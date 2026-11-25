@@ -6,6 +6,11 @@ Plays NES games on the phone, with sound. Two come with it; more load from the p
 ![Thwaite](screenshots/game.png)
 ![the menu](screenshots/menu.png)
 
+On a T46S (480 x 272, no touch) the game is shown one pixel for one in the middle of the screen, and the list's soft keys are Play and Close. The manifest says `"screen": "any"`, so the firmware hands the app the screen's own size (firmware with app API 6; on an older one it gets 800 x 480 as before).
+
+![the list on a T46S](screenshots/t46s-list.png)
+![Thwaite on a T46S](screenshots/t46s-game.png)
+
 ## Keys
 
 | Key | Pad |

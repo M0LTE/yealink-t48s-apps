@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /*
  * nes: plays NES games. A list of the ROMs it can find (its own folder, its
- * data folder, a USB stick), then the game at twice its size in the middle
- * of the screen. X opens a small menu: save and load one state, reset, back
+ * data folder, a USB stick), then the game in the middle of the screen: at
+ * twice its size on the T48S, as it is on a smaller screen. It lays itself
+ * out for the screen it is given (the manifest's "screen": "any"). X opens a small menu: save and load one state, reset, back
  * to the list. Battery saves are kept beside the states in the data folder.
  *
  * The core is in nes.h; getting a picture on the screen is in video.h, and
@@ -204,7 +205,7 @@ static long stat_frames, stat_skipped;
 static long long stat_us;
 static char notice[64];          /* under the list, or in the menu */
 static int notice_bad;
-static uint32_t pic[PIC_W * PIC_H];   /* the game's last picture, behind the menu */
+static uint32_t pic[PIC_MAX];   /* the game's last picture, behind the menu */
 
 static long long now_us(void)
 {
@@ -302,7 +303,7 @@ static void game_frame(void)
     int draw = !(late && skipped < 3);    /* behind: leave pictures out, up to three in a row */
 
     if (t0 - next_us > 200000) next_us = t0;   /* far behind (the phone was busy): do not race to catch up */
-    if (draw) nes_set_video(nes, scale_line_2x, video_target());
+    if (draw) nes_set_video(nes, pic_scale == 2 ? scale_line_2x : scale_line_1x, video_target());
     nes_frame(nes, pad, draw);
     sound_frame(nes, (long)(now_us() - next_us));
     if (draw) {
@@ -345,12 +346,24 @@ static unsigned pad_bit(int key)
 
 /* ---------- the list ---------- */
 
-#define ROW_H 60
-#define LIST_X 16
-#define LIST_Y 54
-#define VISIBLE 6
-#define SCROLL_W 60
-#define HINT "Arrows: D-pad    OK or 2: A    1: B    *: Select    #: Start    X: menu"
+/* a small screen (the T46S): closer rows, the hint without the arrows, and the soft keys' labels */
+#define SMALL (t48_ui_is_small())
+#define ROW_H (SMALL ? 35 : 60)
+#define LIST_X (SMALL ? 8 : 16)
+#define LIST_Y (SMALL ? t48_ui_head_h() + 3 : 54)
+#define VISIBLE (SMALL ? 5 : 6)
+#define SCROLL_W (SMALL ? 10 : 60)
+#define PAD (SMALL ? 10 : 18)
+#define HINT (SMALL ? "OK or 2: A   1: B   *: Select   #: Start   X: menu" \
+                    : "Arrows: D-pad    OK or 2: A    1: B    *: Select    #: Start    X: menu")
+
+/* what the soft keys do, on a phone that has them */
+static void softkeys(const char *first, const char *last)
+{
+    const char *const label[4] = {first, NULL, NULL, last};
+    static const int role[4] = {T48_UI_FIRST, 0, 0, T48_UI_PLAIN};
+    if (t48_has_softkeys()) t48_ui_softkeys(s, label, role);
+}
 
 static int list_w(void)
 {
@@ -359,29 +372,36 @@ static int list_w(void)
 
 static void draw_list(void)
 {
-    int w = list_w(), hint_y = LIST_Y + VISIBLE * ROW_H + (s->h - LIST_Y - VISIBLE * ROW_H - t48_font_small.height) / 2 - 2;
+    int bottom = s->h - (t48_has_softkeys() ? T48_UI_BAR_H : 0);
+    int w = list_w(), hint_y = LIST_Y + VISIBLE * ROW_H + (bottom - LIST_Y - VISIBLE * ROW_H - t48_font_small.height) / 2 - 2;
 
     if (sel < top) top = sel;
     if (sel >= top + VISIBLE) top = sel - VISIBLE + 1;
     if (top > nroms - VISIBLE) top = nroms > VISIBLE ? nroms - VISIBLE : 0;
 
     t48_ui_clear(s, TH->bg);
-    t48_ui_header(s, "NES", 1, 0);
-    if (!nroms) t48_text_centre(s, s->w / 2, 200, &t48_font_normal, TH->dim, "No ROMs");
+    t48_ui_header(s, "NES", t48_has_touch(), 0);
+    if (!nroms) t48_text_centre(s, s->w / 2, SMALL ? s->h / 2 - 30 : 200, &t48_font_normal, TH->dim, "No ROMs");
     for (int i = top; i < nroms && i < top + VISIBLE; i++) {
-        int y = LIST_Y + (i - top) * ROW_H, h = ROW_H - 6, ty = y + (h - t48_font_normal.height) / 2;
+        int y = LIST_Y + (i - top) * ROW_H, h = ROW_H - (SMALL ? 3 : 6), ty = y + (h - t48_font_normal.height) / 2;
         t48_ui_ink ink;
         t48_ui_row(s, LIST_X, y, w, h, i == sel, &ink);
-        t48_text_fit(s, LIST_X + 18, ty, w - 150, &t48_font_bold, ink.text, roms[i].name);
-        t48_text_right(s, LIST_X + w - 18, ty, &t48_font_normal, ink.dim, src_names[roms[i].src]);
+        t48_text_fit(s, LIST_X + PAD, ty, w - 150, &t48_font_bold, ink.text, roms[i].name);
+        t48_text_right(s, LIST_X + w - PAD, ty, &t48_font_normal, ink.dim, src_names[roms[i].src]);
     }
-    if (nroms > VISIBLE) {
+    if (nroms > VISIBLE && SMALL) {
+        /* where the rows showing are in the whole list */
+        int x = s->w - LIST_X - 4, hh = VISIBLE * ROW_H - 3, th = hh * VISIBLE / nroms;
+        t48_fill(s, x, LIST_Y, 4, hh, TH->line);
+        t48_fill(s, x, LIST_Y + (hh - th) * top / (nroms - VISIBLE), 4, th, TH->dim);
+    } else if (nroms > VISIBLE) {
         int x = s->w - LIST_X - SCROLL_W + 8, hh = VISIBLE * ROW_H / 2 - 6;
         t48_ui_btn(s, x, LIST_Y, SCROLL_W - 8, hh, "^", top > 0 ? T48_UI_PLAIN : T48_UI_OFF);
         t48_ui_btn(s, x, LIST_Y + hh + 6, SCROLL_W - 8, hh, "v", top + VISIBLE < nroms ? T48_UI_PLAIN : T48_UI_OFF);
     }
     if (notice[0]) t48_ui_notice(s, LIST_X, hint_y - 8, notice, notice_bad ? T48_UI_STOP : T48_UI_PLAIN);
     else t48_text_centre(s, s->w / 2, hint_y, &t48_font_small, TH->dim, HINT);
+    softkeys(nroms ? "Play" : NULL, "Close");
     t48_damage_all();
 }
 
@@ -410,10 +430,11 @@ static void list_start(void)
 enum { MENU_RESUME, MENU_SAVE, MENU_LOAD, MENU_RESET, MENU_LIST, MENU_ROWS };
 static const char *const menu_names[MENU_ROWS] = {"Resume", "Save state", "Load state", "Reset", "Games"};
 static int menu_sel;
-#define MENU_W 320
-#define MENU_BTN_H 50
-#define MENU_PAD 16
-#define MENU_H (MENU_PAD * 2 + MENU_ROWS * (MENU_BTN_H + 8) + 22)
+#define MENU_W (SMALL ? 240 : 320)
+#define MENU_BTN_H (SMALL ? 32 : 50)
+#define MENU_GAP (SMALL ? 4 : 8)
+#define MENU_PAD (SMALL ? 10 : 16)
+#define MENU_H (MENU_PAD * 2 + MENU_ROWS * (MENU_BTN_H + MENU_GAP) + 22)
 
 static void menu_place(int *x, int *y)
 {
@@ -431,7 +452,7 @@ static void draw_menu(void)
     t48_ui_dialog(s, x, y, MENU_W, MENU_H, T48_UI_PLAIN);
     t48_ui_dialog_ink(&ink);
     for (int i = 0; i < MENU_ROWS; i++)
-        t48_ui_dialog_btn(s, x + MENU_PAD, y + MENU_PAD + i * (MENU_BTN_H + 8), MENU_W - 2 * MENU_PAD, MENU_BTN_H, menu_names[i],
+        t48_ui_dialog_btn(s, x + MENU_PAD, y + MENU_PAD + i * (MENU_BTN_H + MENU_GAP), MENU_W - 2 * MENU_PAD, MENU_BTN_H, menu_names[i],
                           i == menu_sel ? T48_UI_FIRST : T48_UI_PLAIN);
     t48_text_centre(s, s->w / 2, y + MENU_H - MENU_PAD - 20, &t48_font_small, notice_bad ? TH->bad : ink.dim, notice);
     t48_damage_all();
@@ -498,8 +519,8 @@ static int on_key(int key, int down)
         }
         return 0;
     }
-    if (key == T48_KEY_BACK) return 1;
-    if (key == T48_KEY_OK) {
+    if (key == T48_KEY_BACK || key == T48_KEY_SOFT4) return 1;
+    if (key == T48_KEY_OK || key == T48_KEY_SOFT1) {
         list_start();
     } else if ((key == T48_KEY_UP && sel > 0) || (key == T48_KEY_DOWN && sel + 1 < nroms)) {
         sel += key == T48_KEY_UP ? -1 : 1;
@@ -516,10 +537,10 @@ static int on_touch(int x, int y)
     } else if (mode == M_MENU) {
         int mx, my, row;
         menu_place(&mx, &my);
-        row = (y - my - MENU_PAD) / (MENU_BTN_H + 8);
+        row = (y - my - MENU_PAD) / (MENU_BTN_H + MENU_GAP);
         if (x < mx || x >= mx + MENU_W || y < my || y >= my + MENU_H) play();
         else if (y >= my + MENU_PAD && row < MENU_ROWS) menu_do(menu_sel = row);
-    } else if (y < T48_UI_HEAD_H) {
+    } else if (y < t48_ui_head_h()) {
         if (x < 130) return 1;
     } else if (y >= LIST_Y && y < LIST_Y + VISIBLE * ROW_H) {
         if (nroms <= VISIBLE && x >= LIST_X + list_w()) {
@@ -544,6 +565,7 @@ int main(void)
 
     if (t48_app_init() < 0) return 1;
     s = t48_screen();
+    video_size(s->w, s->h);
     if (!(nes = calloc(1, sizeof *nes))) return 1;
     sound_init(nes);
     show_list();
