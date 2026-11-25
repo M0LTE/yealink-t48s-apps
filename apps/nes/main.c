@@ -34,6 +34,7 @@ static const char *const src_names[] = {"Built in", "Phone", "USB"};
 struct rom {
     char path[300];
     char name[64];
+    char note[40];   /* region and revision from the file name's tags, e.g. "USA, Rev 1" */
     int src;
 };
 #define MAX_ROMS 200
@@ -61,6 +62,54 @@ static void base_name(const char *path, char *out, size_t n)
     snprintf(out, n, "%.*s", dot ? (int)(dot - b) : (int)strlen(b), b);
 }
 
+/* ROM archives name files with tags: "Super Mario Bros. 3 (U) (PRG1) [!]" is
+ * GoodNES, "Super Mario Bros. 3 (USA) (Rev 1)" No-Intro. Show the title, and
+ * the tags that tell copies apart as a short note. */
+static void note_add(char *note, size_t n, const char *t)
+{
+    size_t l = strlen(note);
+    snprintf(note + l, n - l, "%s%s", l ? ", " : "", t);
+}
+
+static void tidy_name(char *name, char *note, size_t nn)
+{
+    static const char *const regions[][2] = {
+        {"U", "USA"}, {"E", "Europe"}, {"J", "Japan"}, {"W", "World"}, {"UE", "USA, Europe"},
+        {"JU", "Japan, USA"}, {"F", "France"}, {"G", "Germany"}, {"Unl", "Unlicensed"},
+    };
+    char out[64] = "", tag[40], rev[48];
+    note[0] = 0;
+    const char *p = name;
+    while (*p) {
+        if (*p == '(' || *p == '[') {
+            char close = *p == '(' ? ')' : ']';
+            const char *e = strchr(p, close);
+            if (!e) break;
+            snprintf(tag, sizeof tag, "%.*s", (int)(e - p - 1), p + 1);
+            if (close == ')') {
+                const char *t = tag;
+                for (size_t i = 0; i < sizeof regions / sizeof *regions; i++)
+                    if (!strcmp(tag, regions[i][0])) t = regions[i][1];
+                if (!strncmp(tag, "PRG", 3) && tag[3] >= '0' && tag[3] <= '9') { snprintf(rev, sizeof rev, "Rev %s", tag + 3); t = rev; }
+                note_add(note, nn, t);
+            } else if (tag[0] == 'b') note_add(note, nn, "bad dump");
+            else if (tag[0] == 'h') note_add(note, nn, "hack");
+            else if (tag[0] == 'p') note_add(note, nn, "pirate");
+            else if (tag[0] == 'T') note_add(note, nn, "translation");
+            /* [!] verified, [a] alternate, [o] overdump, [t] trainer: nothing to show */
+            p = e + 1;
+            continue;
+        }
+        size_t l = strlen(out);
+        if (l + 1 < sizeof out) { out[l] = *p; out[l + 1] = 0; }
+        p++;
+    }
+    size_t l = strlen(out);
+    while (l && out[l - 1] == ' ') out[--l] = 0;
+    for (char *q = out; (q = strstr(q, "  ")); ) memmove(q, q + 1, strlen(q));
+    if (out[0]) snprintf(name, 64, "%s", out);
+}
+
 static void scan_dir(struct rom *list, int *n, const char *dir, int src)
 {
     DIR *d = opendir(dir);
@@ -72,6 +121,7 @@ static void scan_dir(struct rom *list, int *n, const char *dir, int src)
         if (len < 5 || strcasecmp(e->d_name + len - 4, ".nes") || e->d_name[0] == '.') continue;
         if (snprintf(r->path, sizeof r->path, "%s/%s", dir, e->d_name) >= (int)sizeof r->path) continue;
         base_name(r->path, r->name, sizeof r->name);
+        tidy_name(r->name, r->note, sizeof r->note);
         for (size_t i = 0; i < sizeof titles / sizeof *titles; i++)
             if (src == SRC_BUILT_IN && !strcmp(r->name, titles[i][0])) snprintf(r->name, sizeof r->name, "%s", titles[i][1]);
         r->src = src;
@@ -386,7 +436,10 @@ static void draw_list(void)
         int y = LIST_Y + (i - top) * ROW_H, h = ROW_H - (SMALL ? 3 : 6), ty = y + (h - t48_font_normal.height) / 2;
         t48_ui_ink ink;
         t48_ui_row(s, LIST_X, y, w, h, i == sel, &ink);
+        int tw = t48_text_width(&t48_font_bold, roms[i].name), nx = LIST_X + PAD + (tw < w - 150 ? tw : w - 150);
         t48_text_fit(s, LIST_X + PAD, ty, w - 150, &t48_font_bold, ink.text, roms[i].name);
+        if (roms[i].note[0] && nx + 16 < LIST_X + w - 150)
+            t48_text_fit(s, nx + 12, ty, LIST_X + w - 150 - nx - 12, &t48_font_normal, ink.dim, roms[i].note);
         t48_text_right(s, LIST_X + w - PAD, ty, &t48_font_normal, ink.dim, src_names[roms[i].src]);
     }
     if (nroms > VISIBLE && SMALL) {
