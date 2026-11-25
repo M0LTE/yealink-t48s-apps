@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include "t48.h"
 
 #define CELL 40                 /* pixels */
@@ -87,12 +88,14 @@ static const char *data_path(const char *name)
 static void best_file(int save)
 {
     int v[2] = {0, 0};
-    char k[16];
-    int x;
+    char line[64], k[16];
+    long x;
     FILE *f = fopen(data_path("best"), "r");
     if (f) {
-        while (fscanf(f, "%15s %d", k, &x) == 2)
-            if (!strcmp(k, "walls")) v[1] = x; else if (!strcmp(k, "wrap")) v[0] = x;
+        while (fgets(line, sizeof line, f)) {
+            if (sscanf(line, "%15s %ld", k, &x) != 2 || x < 0 || x > MAXN) continue;
+            if (!strcmp(k, "walls")) v[1] = (int)x; else if (!strcmp(k, "wrap")) v[0] = (int)x;
+        }
         fclose(f);
     }
     if (!save) { best = v[walls]; return; }
@@ -101,6 +104,8 @@ static void best_file(int save)
     snprintf(tmp, sizeof tmp, "%s", data_path("best.new"));
     if (!(f = fopen(tmp, "w"))) return;
     fprintf(f, "walls %d\nwrap %d\n", v[1], v[0]);
+    fflush(f);
+    fsync(fileno(f));
     if (fclose(f) == 0) rename(tmp, data_path("best"));
 }
 
@@ -376,7 +381,7 @@ static void overlay(const target *t)
         words(t, cx, y + 30, &t48_font_big, ink.text, "Snake");
         words(t, cx, y + 82, &t48_font_normal, ink.dim, walls ? "Mind the walls" : "No walls");
         words(t, cx, y + 204, &t48_font_small, ink.dim, "Arrows, 2 4 6 8 or a swipe to steer");
-        words(t, cx, y + 228, &t48_font_small, ink.dim, "OK: pause     X: close");
+        words(t, cx, y + 228, &t48_font_small, ink.dim, "OK: pause     X: back");
     } else if (state == PAUSED) {
         words(t, cx, y + 30, &t48_font_head, ink.text, "Paused");
     } else {
@@ -668,6 +673,7 @@ int main(void)
             redraw();
             break;
         case T48_EV_QUIT:
+            if (state == PLAY || state == PAUSED) end_game(OVER, 0);
             return 0;
         }
         flush();

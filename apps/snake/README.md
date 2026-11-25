@@ -1,6 +1,6 @@
 # Snake
 
-The classic, for Vic. Eat apples, grow, and do not run into yourself or the wall. Each apple makes the snake a little faster. The best score is kept.
+The classic. Eat apples, grow, and do not run into yourself or the wall. Each apple makes the snake a little faster. The best score is kept.
 
 | | |
 |---|---|
