@@ -618,6 +618,10 @@ int main(void)
 
     if (t48_app_init() < 0) return 1;
     s = t48_screen();
+    if (s->w < 256 || s->h < 240) {   /* the picture is drawn 1:1 at least */
+        fprintf(stderr, "nes: the screen is %dx%d, smaller than a NES picture\n", s->w, s->h);
+        return 1;
+    }
     video_size(s->w, s->h);
     if (!(nes = calloc(1, sizeof *nes))) return 1;
     sound_init(nes);
