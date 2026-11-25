@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Starts, draws, shows the frame rate, steps through every part, and leaves on X.
+waitframe 5000
+expect app
+wait 2500
+shot build/stars.png
+key star
+key right
+wait 3500
+shot build/gem.png
+key right
+wait 2000
+shot build/plasma.png
+key right
+wait 4000
+shot build/knot.png
+key right
+wait 2000
+shot build/roto.png
+key right
+wait 2500
+shot build/tunnel.png
+key right
+wait 9000
+shot build/outro.png
+key x
+waitscreen launcher 3000

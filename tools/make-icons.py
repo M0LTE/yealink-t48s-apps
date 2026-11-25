@@ -60,6 +60,48 @@ def links():
     save(im, "links")
 
 
+def demo():
+    # a lit torus seen at a tilt, on a few stars
+    N = 4  # drawn at four times the size, then reduced, for smooth edges
+    im = Image.new("RGB", (S * N, S * N), (4, 6, 12))
+    px = im.load()
+    for sx, sy, v in ((10, 14, 200), (80, 10, 150), (86, 60, 120), (14, 76, 170), (50, 6, 110), (72, 88, 190), (30, 90, 100)):
+        for j in range(N):
+            for i in range(N):
+                px[sx * N + i, sy * N + j] = (v, v, v)
+    stops = [(2, 3, 8), (6, 32, 46), (11, 85, 96), (24, 163, 154), (111, 224, 198), (232, 255, 244)]
+    R, r, tilt = 27.0, 12.5, math.radians(55)
+    ct, st = math.cos(tilt), math.sin(tilt)
+    lx, ly, lz = -0.45, -0.55, -0.70
+    for y in range(S * N):
+        for x in range(S * N):
+            # a ray straight into the screen, marched to the torus
+            ox, oy = (x + 0.5) / N - 48, (y + 0.5) / N - 48
+            t, hit = -60.0, False
+            for _ in range(48):
+                pz = t
+                qy, qz = oy * ct - pz * st, oy * st + pz * ct
+                d = math.hypot(math.hypot(ox, qz) - R, qy) - r
+                if d < 0.02:
+                    hit = True
+                    break
+                t += d
+                if t > 60:
+                    break
+            if not hit:
+                continue
+            k = math.hypot(ox, qz)
+            n = ((ox - ox * R / k), qy, (qz - qz * R / k))
+            ny, nz = n[1] * ct + n[2] * st, -n[1] * st + n[2] * ct
+            ln = math.sqrt(n[0] ** 2 + ny ** 2 + nz ** 2)
+            dd = max(0.0, (n[0] * lx + ny * ly + nz * lz) / ln)
+            v = min(1.0, 0.08 + 0.62 * dd + 0.34 * dd ** 26) * (len(stops) - 1)
+            a = min(int(v), len(stops) - 2)
+            f = v - a
+            px[x, y] = tuple(int(stops[a][i] * (1 - f) + stops[a + 1][i] * f) for i in range(3))
+    save(im.resize((S, S), Image.LANCZOS), "demo")
+
+
 def nes():
     """A two-button pad."""
     im = Image.new("RGB", (S, S), BG)
@@ -96,5 +138,6 @@ def snake():
 hello()
 waterfall()
 links()
+demo()
 nes()
 snake()

@@ -1,0 +1,11 @@
+{
+  "id": "demo",
+  "name": "Demo",
+  "version": "0.1.0",
+  "description": "Real-time 3D, tunnel, plasma and a scroller: what the phone can draw",
+  "api": 1,
+  "exec": "demo",
+  "icon": "icon.ppm",
+  "permissions": [],
+  "settings": []
+}
