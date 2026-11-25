@@ -7,11 +7,13 @@
  * Keys: * shows or hides the frame rate, left and right step through the
  * parts, any other key leaves. Touches are ignored.
  *
- * The timeline is laid out in bars of a tune that is not there yet (apps
- * cannot play audio): 125 beats a minute, four to the bar. When they can,
- * clock_us() becomes the audio stream's position and nothing else moves. */
+ * The timeline is laid out in the bars of the tune (music.c, tune.c): 125
+ * beats a minute, four to the bar. The clock here moves by whole refreshes of
+ * the screen and the tune is kept to it (sound.c), so on a phone with no
+ * sound for apps everything but the sound is the same. */
 #include <stdio.h>
 #include "demo.h"
+#include "music.h"
 
 #define BEAT_US 480000
 #define BAR_US (4 * BEAT_US)
@@ -54,6 +56,8 @@ static void stats_part_end(int i)
             fprintf(logf, "%-7s %5d frames  %5.1f fps  frame %5.2f ms (worst %5.1f)  draw %5.2f ms  %s/%d\n", parts[i].name, tot.frames,
                     tot.frames * 1e6 / (double)tot.span_us, (double)tot.span_us / tot.frames / 1000.0, tot.worst_us / 1000.0,
                     (double)tot.draw_us / tot.frames / 1000.0, fe_vsync() ? "flip" : "copy", fe_pace_now());
+            int gaps, synth = snd_stats(&gaps);
+            if (synth >= 0) fprintf(logf, "        tune %d.%d%% of the processor, %d gaps\n", synth / 10, synth % 10, gaps);
             fflush(logf);
         }
     }
@@ -108,6 +112,9 @@ int main(void)
     fx_init();
     parts[NPARTS - 1].bars = (int)(((long long)outro_ms() * 1000 + BAR_US - 1) / BAR_US);
     for (int i = 0; i < NPARTS; i++) start_us[i + 1] = start_us[i] + (long long)parts[i].bars * BAR_US;
+    /* the tune is written for these bars: if they ever disagree, better none than one that drifts off the picture */
+    if ((long long)music_init(parts[NPARTS - 1].bars) * BAR_US == start_us[NPARTS]) snd_start();
+    else music_init(-1);
     all_stale();
     int slow_us = getenv("DEMO_DRAW_MS") ? atoi(getenv("DEMO_DRAW_MS")) * 1000 : 0;
     if (getenv("DEMO_AT")) song = atoll(getenv("DEMO_AT")) * 1000 % start_us[NPARTS];   /* for pictures: start this many ms in */
@@ -154,6 +161,7 @@ int main(void)
             all_stale();
             fe_pace(parts[i].pace);
         }
+        snd_sync(song, now + fe_ahead_us());
         frame f;
         f.s = fe_begin(&f.buf);
         if (f.buf < 0) { f.buf = 0; all_stale(); }
@@ -165,6 +173,9 @@ int main(void)
         f.gt = (int)(song / 1000);
         f.beat = (int)(song / BEAT_US);
         f.beat_frac = (int)((song % BEAT_US) * 65536 / BEAT_US);
+        music_cue cue;
+        music_cue_at(song, &cue);
+        f.kick = cue.kick; f.snare = cue.snare; f.bass = cue.bass;
         long long t0 = now_us();
         parts[i].draw(&f);
         if (slow_us) while (now_us() - t0 < slow_us) ;                 /* DEMO_DRAW_MS: stand in for a slower part */

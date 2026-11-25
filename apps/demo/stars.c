@@ -118,7 +118,8 @@ void intro_draw(const frame *f)
     /* the stars gather speed towards the end, into the next part */
     int rush = ease((f->t - (f->len - 2500)) * 256 / 2500);
     int speed = cruise + rush * cruise * 3 / 256;
-    stars_draw(f, (int)((long long)speed * f->dtu / 1000000), envelope(f->t, f->len, 1500, 0));
+    /* the stars flare with the kick drum, here and behind every solid */
+    stars_draw(f, (int)((long long)speed * f->dtu / 1000000), envelope(f->t, f->len, 1500, 0) * (256 + f->kick / 2) >> 8);
 
     int slot = (f->len - 1200) / 3, i = (f->t - 600) / slot, t = (f->t - 600) % slot;
     shown[f->buf] = (rect){0, 0, 0, 0};

@@ -13,7 +13,7 @@ static rect last[FE_MAXBUF];
 
 /* ---------- gem: every face one colour, from two lamps ---------- */
 
-static int gem_fade;
+static int gem_fade, gem_flash;
 
 static uint32_t gem_face(int nx, int ny, int nz)
 {
@@ -28,7 +28,8 @@ static uint32_t gem_face(int nx, int ny, int nz)
     if (r > 255) r = 255;
     if (g > 255) g = 255;
     if (b > 255) b = 255;
-    return scale32(T48_RGB(r, g, b), (unsigned)gem_fade);
+    uint32_t c = scale32(T48_RGB(r, g, b), (unsigned)gem_fade);
+    return add_sat(c, scale32(c, (unsigned)gem_flash));
 }
 
 static const material gem_mat = {.mode = M_FLAT, .face = gem_face};
@@ -106,7 +107,7 @@ static void sky(const frame *f, int star_speed, int star_bright)
     t48_surface *s = f->s;
     if (f->fresh) { clear_rect(s, (rect){0, 0, s->w, s->h}, 0); last[f->buf] = (rect){0, 0, 0, 0}; }
     clear_rect(s, last[f->buf], 0);
-    stars_draw(f, (int)((long long)star_speed * f->dtu / 1000000), star_bright);
+    stars_draw(f, (int)((long long)star_speed * f->dtu / 1000000), star_bright * (256 + f->kick / 2) >> 8);
 }
 
 /* the distance of a solid that arrives from far off, rests, and leaves again. Q12 */
@@ -123,8 +124,10 @@ void gem_draw(const frame *f)
     unsigned t = (unsigned)(f->tu / 256);
     int cr = stars_cruise(), rush = 256 - ease(f->t * 256 / 2500);
     sky(f, cr + rush * cr * 3 / 256, envelope(f->t, f->len, 0, 900));
-    pose p = {.ax = t * 5, .ay = t * 7 + 9000, .az = t * 2, .z = fly(f, 14600, 2200, 1500), .focal = 640};
+    /* each kick lights the gem and brings it a touch nearer */
+    pose p = {.ax = t * 5, .ay = t * 7 + 9000, .az = t * 2, .z = fly(f, 14600, 2200, 1500) - f->kick * 2, .focal = 640};
     gem_fade = envelope(f->t, f->len, 1200, 900);
+    gem_flash = f->kick * 5 / 8;
     mesh_draw(f->s, &gem, &p, &gem_mat, &last[f->buf]);
 }
 
@@ -134,6 +137,7 @@ void knot_draw(const frame *f)
     sky(f, stars_cruise(), envelope(f->t, f->len, 900, 900));
     pose p = {.ax = t * 4 + 6000, .ay = t * 6, .az = t * 3, .z = fly(f, 13200, 2200, 1500), .focal = 640};
     pal_fade(knot_pal, knot_ramp, 256, envelope(f->t, f->len, 1200, 900));
+    pal_lift(knot_pal, 256, f->kick / 2);
     mesh_draw(f->s, &knot, &p, &knot_mat, &last[f->buf]);
 }
 
@@ -145,7 +149,8 @@ static void scroller(const frame *f, int top, int fade)
     t48_surface *s = f->s;
     static int32_t y0[MAXW];
     static uint32_t tc[256];
-    int w = s->w, H = strip.h, amp = (BAND_H - H) / 2 - 2;
+    /* the wave the text rides swells with each note of the bass */
+    int w = s->w, H = strip.h, amp = ((BAND_H - H) / 2 - 2) * (176 + f->bass * 80 / 256) >> 8;
     int sx = (int)((long long)(f->tu - OUTRO_LEAD * 1000) * SCROLL_STEP / fe_period_us()) - w;
     unsigned ph = (unsigned)(f->tu / 256) * 12;
 
@@ -183,6 +188,7 @@ void outro_draw(const frame *f)
     sky(f, stars_cruise(), envelope(f->t, f->len, 900, 1200));
     pose p = {.ax = t * 6, .ay = t * 4 + 3000, .az = t * 2, .y = -2500, .z = fly(f, 19000, 2500, 1500), .focal = 640};
     pal_fade(env_pal, env_ramp, 256, fade);
+    pal_lift(env_pal, 256, f->kick / 3);
     mesh_draw(f->s, &torus, &p, &env_mat, &last[f->buf]);
     scroller(f, f->s->h - BAND_H - 4, fade);
 }

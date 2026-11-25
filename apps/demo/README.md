@@ -1,12 +1,14 @@
 # Demo
 
-Real-time graphics on a desk phone, in the old demo style: a loop of about two and a half minutes, drawn by a 500 MHz ARM1176 with no GPU and no usable FPU. Issue [#13](https://github.com/M0LTE/yealink-t48s-apps/issues/13).
+Real-time graphics and a chiptune on a desk phone, in the old demo style: a loop of about two and a half minutes, drawn and played by a 500 MHz ARM1176 with no GPU and no usable FPU. The tune is made as it plays; there is not a sample in the package. Issue [#13](https://github.com/M0LTE/yealink-t48s-apps/issues/13).
 
 | Key | |
 |---|---|
 | `*` | show or hide the frame rate |
 | left, right | previous, next part |
 | any other key | leave |
+
+The volume keys set how loud it is. On firmware without sound for apps (before API level 4) it runs the same, silent.
 
 ![the knot](screenshots/knot.png)
 ![the tunnel](screenshots/tunnel.png)
@@ -26,19 +28,19 @@ Real-time graphics on a desk phone, in the old demo style: a loop of about two a
 
 ## What the phone manages
 
-The screen refreshes 67.8 times a second, so a part runs at 67.8 frames a second or at 33.9. Writing memory is the limit: about 160 MB a second, so filling 800 x 480 once takes 10 of the 14.7 ms in a refresh. Draw times on the phone (`make bench`, 2026-11-25):
+The screen refreshes 67.8 times a second, so a part runs at 67.8 frames a second or at 33.9. Writing memory is the limit: about 160 MB a second, so filling 800 x 480 once takes 10 of the 14.7 ms in a refresh. On the phone, with the tune playing (2026-11-25; draw times from `make bench`, frame rates from the app's own log on firmware level 4, flipping):
 
-| Part | Drawn at | Draw time | Pace it is set for |
+| Part | Drawn at | Draw time | Frames a second |
 |---|---|---|---|
-| stars | 800 x 480, only what moves | 4.1 ms | 67.8 |
-| gem | 800 x 480, only what moves | 9.4 ms | 67.8 |
-| plasma | 800 x 384 | 8.7 ms | 67.8 |
-| knot | 800 x 480, only what moves | 19.1 ms | 33.9 |
-| roto | 400 x 192, doubled | 10.8 ms | 67.8 |
-| tunnel | 800 x 384 | 22.8 ms | 33.9 |
-| outro | 800 x 480, only what moves | 23.4 ms | 33.9 |
+| stars | 800 x 480, only what moves | 4.0 ms | 67.8 |
+| gem | 800 x 480, only what moves | 9.7 ms | 67.6 |
+| plasma | 800 x 384 | 8.9 ms | 67.8 |
+| knot | 800 x 480, only what moves | 20.0 ms | 34.0 |
+| roto | 400 x 192, doubled | 10.6 ms | 67.7 |
+| tunnel | 800 x 384 | 23.5 ms | 34.0 |
+| outro | 800 x 480, only what moves | 23.6 ms | 33.9 |
 
-The paces are what the draw times allow with flipping; they have not yet been watched on the glass, as the phone's firmware was still at level 2 when this was measured. Run through the level 2 fallback on the phone, an earlier build gave 60 (stars), 51 (gem), 53 (plasma), 38 (knot), 51 (roto), 45 (tunnel, then at half size) and 32 (outro) frames a second, with tearing.
+Every part keeps the pace it asks for. The tune costs 1.2% of the processor by itself (144 s of sound made in 1.7 s), and 1.4 to 2.0% as the app's log counts it, with the drawing pushing it out of the cache; a whole loop played with no gap. That run was silent (the audio service's test mode keeps the amplifier off): the frame rates and the sound sent to the codec were measured, and nobody has yet heard it from the phone's loudspeaker or watched it on the glass.
 
 ## How it is drawn
 
@@ -54,15 +56,28 @@ The paces are what the draw times allow with flipping; they have not yet been wa
 
 Each part asks for a pace: every refresh, or every second one. A part that cannot keep its pace is stepped down for the rest of its run, as an even 34 frames a second looks better than an uneven 50.
 
-The timeline (`demo.c`) is laid out in bars at 125 beats a minute, and parts are told the beat. There is no sound yet, as apps cannot play audio. When they can, the clock becomes the audio stream's position and a tune drops onto the same bars.
+The timeline (`demo.c`) is laid out in bars at 125 beats a minute, and its clock moves by whole refreshes of the screen: that is what keeps motion even. The tune follows the picture, not the other way round.
+
+## The tune
+
+An original tune in A minor, written for this demo (`tune.c`): a block of bars for each part, and three blocks that take turns under the outro for as long as its text runs.
+
+- **The player** (`music.c`) works like a tracker. Six channels: four play notes, two play drums. A tick is 20 ms, a row six ticks (a sixteenth note), a bar sixteen rows. Each tick the envelopes, vibrato, pulse widths and chords move (a chord is one voice stepping through its three notes fifty times a second); between ticks it is one short loop a voice.
+- **The voices** are pulse of any width, saw and triangle. Saw comes from tables that hold only the harmonics under 6.8 kHz for the octave being played, so nothing folds back as a whistle at 16000 samples a second, and a pulse is one saw minus the same saw a little later. Drums are a sine that falls in pitch, plus noise. An echo three rows long sits behind the leads.
+- **For a small loudspeaker:** the bass is written an octave up and is rich in harmonics, since the fundamental would not be heard; nothing under 100 Hz is sent; the top is soft; peaks stay under full scale and the odd one over the knee is squeezed, not clipped.
+- **In time** (`sound.c`): sound written now is heard about 65 ms later, and a frame drawn now is seen one or two refreshes later. A thread makes each tick of sound, works out when it will be heard and where the picture will be by then, and makes the tick a few samples shorter or longer to stay with it: the tempo gives a little, the pitch does not. Stepping to another part, or coming back from Home, the tune jumps.
+- **The picture listens:** parts are told the kick, the snare and the bass, read from the score (so it is the same with no sound). The stars and solids flare on the kick, the plasma's colours jump, the rotozoomer is knocked back, and the wave the scroller rides swells with each bass note.
+
+`make wav` writes the whole tune to `build/demo.wav` with the same player, sample for sample, to listen to on a PC.
 
 ## Working on it
 
 ```
 make check                     # the simulator steps through every part
-make bench                     # build/arm/demo-bench: draw times without a shell; run it on the phone
+make bench                     # build/arm/demo-bench: draw times and the synth's cost, without a shell; run it on the phone
+make wav                       # build/demo.wav: the tune, from the player the phone runs
 DEMO_AT=47000 make shot        # a picture from 47 s into the loop
 DEMO_DRAW_MS=20 ...            # every frame takes at least this long to draw: for trying the pacing
 ```
 
-With the overlay on, each part's frame rate and draw time are also written to `fps.log` in the app's data folder when the part ends.
+With the overlay on, each part's frame rate and draw time are also written to `fps.log` in the app's data folder when the part ends, with what the tune cost and any gaps in it.

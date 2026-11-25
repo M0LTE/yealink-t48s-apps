@@ -118,7 +118,10 @@ void plasma_draw(const frame *f)
     int ox = f->s->w / 2 + ((fsin(t * 2) * 260) >> 14), oy = f->s->h / 2 + ((fcos(t * 3) * 150) >> 14);
     int ox2 = f->s->w / 2 + ((fcos(t * 3 + 9000) * 300) >> 14), oy2 = f->s->h / 2 + ((fsin(t * 2 + 20000) * 170) >> 14);
 
+    int push = f->kick * 9000;       /* the colours jump on with the kick and slide back */
+
     pal_fade(pal, plasma_pal, 1024, fade);
+    pal_lift(pal, 1024, f->snare / 3);
     for (int gy = 0; gy <= rows; gy++)
         for (int gx = 0; gx <= cols; gx++) {
             int x = gx * CELL, y = top + gy * CELL;
@@ -126,7 +129,7 @@ void plasma_draw(const frame *f)
             unsigned r2 = isqrt((unsigned)((x - ox2) * (x - ox2) + (y - oy2) * (y - oy2)) << 4);
             int v = fsin((unsigned)(x * 130) + t * 5) + fsin((unsigned)(y * 170) - t * 7)
                   + fsin((unsigned)((x + y) * 90) + t * 3) + fsin(r1 * 52 - t * 9) + fsin(r2 * 40 + t * 6);
-            grid[gy * GW + gx].u = v * 330 + (int32_t)(t << 11);
+            grid[gy * GW + gx].u = v * 330 + (int32_t)(t << 11) + push;
         }
     grid_draw(f, rows, NULL, pal, G_PAL, shape[0].half);
     fe_touch_all();
@@ -142,12 +145,14 @@ void roto_draw(const frame *f)
     unsigned t = (unsigned)(f->tu / 256);
     unsigned ang = t * 2 + (unsigned)fsin(t * 3);
     int zoom = 47000 + ((fsin(t * 4 + 30000) * 19000) >> 14);      /* texels a pixel, 16.16: 0.43 to 1.0, so texels are never big */
+    zoom += (zoom >> 8) * f->kick >> 3;                             /* the kick knocks it back an eighth */
     int dux = (fcos(ang) * (zoom >> 2)) >> 12, duy = (fsin(ang) * (zoom >> 2)) >> 12;
     /* turn about the middle of the screen, while the texture drifts under it */
     int cu = (int)(t * 1800), cv = (fsin(t * 2) * 180) << 2;
     int hx = f->s->w / 2, hy = rows * CELL / 2;
 
     pal_fade(pal, roto_pal, 256, fade);
+    pal_lift(pal, 256, f->snare / 3);
     for (int gy = 0; gy <= rows; gy++)
         for (int gx = 0; gx <= cols; gx++) {
             int x = gx * CELL - hx, y = gy * CELL - hy;
@@ -174,6 +179,7 @@ void tunnel_draw(const frame *f)
     int scroll = (int)(t * 20);           /* 24.8 texels */
 
     pal_fade(pal, tunnel_pal, 256, fade);
+    pal_lift(pal, 256, f->kick / 3);
     for (int gy = 0; gy <= rows; gy++)
         for (int gx = 0; gx <= cols; gx++) {
             int x0 = gx * CELL - hx, y0 = gy * CELL - hy;

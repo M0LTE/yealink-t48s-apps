@@ -9,7 +9,7 @@ Apps for the open firmware for the Yealink SIP-T48S desk phone: [M0LTE/yealink-t
 | [links](apps/links) | A LinBPQ packet node at a glance: open links, sessions and neighbours (GB7RDG unless you change its address). |
 | [snake](apps/snake) | The classic game: eat apples, grow, get faster. Keys or touch. |
 | [nes](apps/nes) | Plays NES games, with sound. Two free ones come with it; more load from the data folder or a USB stick. |
-| [demo](apps/demo) | Real-time 3D, a tunnel, plasma and a scroller, in the old demo style: what the phone can draw. |
+| [demo](apps/demo) | Real-time 3D, a tunnel, plasma and a scroller, in the old demo style, with a chiptune made as it plays: what the phone can draw and play. |
 
 ![waterfall](apps/waterfall/screenshots/live.png)
 ![links](apps/links/screenshots/live.png)

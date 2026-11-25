@@ -170,6 +170,14 @@ int fe_step_us(int dt)
     return dt;
 }
 
+int fe_ahead_us(void)
+{
+#if T48_API_LEVEL >= 3
+    if (flip) return divisor * period_us;       /* drawn in one slot, on the glass at the start of the next */
+#endif
+    return period_us;
+}
+
 /* A part's pace: each frame shown for div refreshes of the screen. A part that
  * cannot keep it is moved to the next slower one, and stays there until the
  * next part asks: an even 34 frames a second looks better than an uneven 50. */

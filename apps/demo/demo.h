@@ -32,6 +32,7 @@ void fe_event(const t48_event *ev);   /* every event passes through here */
 void fe_pace(int div);          /* show each frame for div refreshes (flipping only) */
 int fe_pace_now(void);          /* the pace in force: fe_pace's, or slower if that could not be kept */
 int fe_step_us(int dt);         /* how far the clock moves for this frame; dt: microseconds since the last */
+int fe_ahead_us(void);          /* from starting to draw a frame to its being on the screen, about */
 long long now_us(void);
 
 /* ---------- maths (util.c) ---------- */
@@ -77,6 +78,8 @@ static inline uint32_t add_sat(uint32_t a, uint32_t b)
 }
 /* n colours of src, each scaled by fade (0..256) */
 void pal_fade(uint32_t *dst, const uint32_t *src, int n, int fade);
+/* each colour brighter by k (0..256) of itself: black stays black */
+void pal_lift(uint32_t *pal, int n, int k);
 /* a ramp through stops[] (0xRRGGBB, evenly spaced) into n entries */
 void pal_ramp(uint32_t *dst, int n, const uint32_t *stops, int nstops);
 
@@ -88,9 +91,9 @@ void blit8(t48_surface *s, int x, int y, const bitmap8 *b, uint32_t c, int alpha
 
 /* ---------- the timeline (demo.c) ---------- */
 
-/* What a part is told about one frame. Time is the music's clock: when apps
- * can play audio it comes from the stream's position, and beat and beat_frac
- * are where a tune would be. */
+/* What a part is told about one frame. Time is the music's clock: the tune is
+ * kept to it (sound.c), so beat and beat_frac are where the tune is as heard,
+ * and kick, snare and bass are read from its score. */
 typedef struct frame {
     t48_surface *s;      /* the buffer to draw in */
     int buf;             /* which buffer, 0..FE_MAXBUF-1: what it holds is what this part last drew in it */
@@ -100,6 +103,8 @@ typedef struct frame {
     int dtu;             /* microseconds since the last frame */
     int gt;              /* ms into the loop */
     int beat, beat_frac; /* beats into the loop, and 0..65535 through this one */
+    int kick, snare;     /* 0..256: 256 as the drum hits, gone 200 ms later */
+    int bass;            /* the same for each note of the bass, over 240 ms */
 } frame;
 
 typedef struct part {
@@ -108,6 +113,14 @@ typedef struct part {
     int pace;            /* refreshes of the screen each frame is shown for: 1 is every refresh */
     void (*draw)(const frame *f);
 } part;
+
+/* ---------- the tune's way out (sound.c; the tune itself is music.h) ---------- */
+
+int snd_start(void);            /* 0, or -1: no sound on this phone */
+/* the picture will show song_us (into the loop) at at_us on now_us()'s clock: the tune keeps to that */
+void snd_sync(long long song_us, long long at_us);
+/* since the last call: what making the sound took, in ms a second of it (-1: no sound), and gaps heard */
+int snd_stats(int *gaps);
 
 /* ---------- shared layers ---------- */
 

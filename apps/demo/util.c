@@ -92,6 +92,12 @@ void pal_fade(uint32_t *dst, const uint32_t *src, int n, int fade)
     for (int i = 0; i < n; i++) dst[i] = scale32(src[i], (unsigned)fade);
 }
 
+void pal_lift(uint32_t *pal, int n, int k)
+{
+    if (k <= 0) return;
+    for (int i = 0; i < n; i++) pal[i] = add_sat(pal[i], scale32(pal[i], (unsigned)k));
+}
+
 void pal_ramp(uint32_t *dst, int n, const uint32_t *stops, int nstops)
 {
     for (int i = 0; i < n; i++) {
