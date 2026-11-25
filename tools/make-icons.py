@@ -60,6 +60,25 @@ def links():
     save(im, "links")
 
 
+def snake():
+    im = Image.new("RGB", (S * 4, S * 4), BG)   # drawn large and shrunk, for smooth edges
+    d = ImageDraw.Draw(im)
+    green, w = (53, 208, 127), 56
+    path = [(84, 300), (300, 300), (300, 190), (130, 190), (130, 84), (236, 84)]
+    d.line(path, fill=green, width=w, joint="curve")
+    for x, y in path:
+        d.ellipse((x - w // 2, y - w // 2, x + w // 2, y + w // 2), fill=green)
+    hx, hy = path[-1]
+    d.ellipse((hx - 34, hy - 34, hx + 34, hy + 34), fill=green)
+    for ey in (hy - 15, hy + 15):
+        d.ellipse((hx + 2, ey - 10, hx + 22, ey + 10), fill=(255, 255, 255))
+        d.ellipse((hx + 12, ey - 4, hx + 20, ey + 4), fill=(16, 16, 16))
+    d.ellipse((296, 60, 344, 108), fill=(255, 90, 71))
+    d.rounded_rectangle((322, 44, 340, 58), 6, fill=green)
+    save(im.resize((S, S), Image.LANCZOS), "snake")
+
+
 hello()
 waterfall()
 links()
+snake()
