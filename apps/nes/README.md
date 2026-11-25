@@ -38,7 +38,20 @@ In the data folder, named after the ROM: `Game.sav` is the cartridge's battery m
 
 - Sound. Apps cannot play audio yet. The APU's timing is all there (frame counter, length counters, DMC, their IRQs) because games depend on it; the two places where the sound itself goes are marked in `apu.c`.
 - A second pad, the Zapper, PAL timing, the Famicom Disk System.
-- Tear-free pictures: that needs the firmware's API level 3 (flipping). `video.c` already has the code for it and uses it when built against a level 3 SDK.
+- Tear-free pictures on a level 2 firmware. Built against a level 3 libt48, `video.c` flips whole pictures instead (and still copies on an older shell); that path passes both test scripts in the level 3 simulator and has not yet run on a phone.
+
+## Speed
+
+Measured on a T48S (ARM1176, 500 MHz), 2026-11-25:
+
+| | |
+|---|---|
+| the core alone, no picture | 2.3 ms a frame (about 430 a second) |
+| with every line doubled into memory | 9.4 ms a frame (about 105 a second) |
+| the app on a level 2 shell, Thwaite | 60 a second; 4 in 100 pictures left out |
+| the app on a level 2 shell, a full-screen scroll | 60 a second; 5 in 100 pictures left out |
+
+The game always runs at the NES's own 60.1 frames a second from the clock. When the phone falls behind, pictures are left out (never more than three in a row), not time. On this PC the core runs at about 13000 frames a second.
 
 ## How it is made
 
