@@ -29,9 +29,9 @@ Keys can be held and pressed together, as on a pad. A long press on X is still H
 `.nes` files are found in:
 
 - the app's data folder, `/data/appdata/nes` or `roms/` inside it (copy them over SSH);
-- any USB disk the phone has mounted: its top folder, `nes/` or `roms/`.
+- a USB stick (FAT or exFAT): its top folder, `nes/` or `roms/`. The firmware mounts it read-only on `/run/media/NAME`.
 
-The list looks again every two seconds, so a stick shows up by itself. The firmware does not mount a stick on its own yet, so for now the data folder is the way in.
+The list looks again every two seconds, so a stick shows up by itself. Older firmware does not mount a stick by itself: there, use the data folder.
 
 Supported boards: NROM, MMC1, UxROM, CNROM, MMC3, AxROM, Color Dreams, BNROM, GxROM and Camerica (mappers 0, 1, 2, 3, 4, 7, 11, 34, 66, 71). Anything else is refused by name: `Mapper 5 not supported`.
 
