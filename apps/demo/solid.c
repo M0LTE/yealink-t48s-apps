@@ -149,14 +149,16 @@ static void scroller(const frame *f, int top, int fade)
     t48_surface *s = f->s;
     static int32_t y0[MAXW];
     static uint32_t tc[256];
-    /* the wave the text rides swells with each note of the bass */
-    int w = s->w, H = strip.h, amp = ((BAND_H - H) / 2 - 2) * (176 + f->bass * 80 / 256) >> 8;
+    /* The wave is there all the time, and each note of the bass swells it by a quarter.
+     * It drifts slowly the other way from the text, whatever the screen's refresh, so
+     * every letter rides up and down it about three times in four seconds. */
+    int w = s->w, H = strip.h, amp = ((BAND_H - H) / 2 - 2) * (205 + f->bass * 51 / 256) >> 8;
     int sx = (int)((long long)(f->tu - OUTRO_LEAD * 1000) * SCROLL_STEP / fe_period_us()) - w;
-    unsigned ph = (unsigned)(f->tu / 256) * 12;
+    unsigned ph = (unsigned)(f->tu / 256) * 2;
 
     for (int i = 0; i < H && i < 256; i++) tc[i] = scale32(strip_ramp[i * 128 / H], (unsigned)fade);
     for (int x = 0; x < w; x++)
-        y0[x] = ((top + BAND_H / 2 - H / 2) << 8) + ((fsin(ph + (unsigned)x * 150) * amp) >> 6);
+        y0[x] = ((top + BAND_H / 2 - H / 2) << 8) + ((fsin((unsigned)x * 150 - ph) * amp) >> 6);
     int x0 = sx < 0 ? -sx : 0, x1 = strip.w - sx < w ? strip.w - sx : w;     /* the columns the strip reaches */
     for (int y = top; y < top + BAND_H; y++) {
         uint32_t *p = s->px + y * s->stride;

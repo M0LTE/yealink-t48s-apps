@@ -1,7 +1,7 @@
 {
   "id": "demo",
   "name": "Demo",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Real-time 3D, tunnel, plasma and a scroller, with a chiptune made as it plays",
   "api": 1,
   "exec": "demo",

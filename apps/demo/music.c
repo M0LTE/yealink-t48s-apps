@@ -320,40 +320,63 @@ static void voice_render(voice *v, int32_t *dry, int32_t *snd, int n)
 
 /* ---------- the player ---------- */
 
+/* the note written at this row of a note channel begins */
+static void note_on(int ch, int row)
+{
+    const cell *c = &cells[ch][row];
+    int bar = row / MUSIC_BAR_ROWS, vol = bar_vol[ch][bar];
+    voice *v = &voices[ch];
+    v->in = &tune_inst[bar_inst[ch][bar]];
+    v->note = c->note; v->arp = c->arp;
+    v->vol = c->acc == 1 ? (vol * 5) >> 2 : c->acc == 2 ? vol >> 1 : vol;
+    if (v->vol > 64) v->vol = 64;
+    v->age = 0;
+    if (v->in->attack) { v->stage = S_ATTACK; v->level = 0; }
+    else { v->stage = S_DECAY; v->level = 256 + v->in->decay; }     /* the tick takes one step off again */
+}
+
 static void row_start(int row)
 {
     int bar = row / MUSIC_BAR_ROWS;
     for (int ch = 0; ch < MUSIC_CH; ch++) {
         const cell *c = &cells[ch][row];
         if (!c->note || !(music_channels >> ch & 1)) continue;
-        int vol = bar_vol[ch][bar];
         if (ch >= CH_DRUM) {
             drum *d = &drums[ch - CH_DRUM];
             if (c->note == NOTE_OFF) { d->rate_step = d->na_step = 0; d->ndec = d->tdec = 6; }
-            else drum_hit(d, c->note, c->acc, vol);
+            else drum_hit(d, c->note, c->acc, bar_vol[ch][bar]);
             continue;
         }
-        voice *v = &voices[ch];
-        if (c->note == NOTE_OFF) { if (v->stage != S_OFF) v->stage = S_RELEASE; continue; }
-        v->in = &tune_inst[bar_inst[ch][bar]];
-        v->note = c->note; v->arp = c->arp;
-        v->vol = c->acc == 1 ? (vol * 5) >> 2 : c->acc == 2 ? vol >> 1 : vol;
-        if (v->vol > 64) v->vol = 64;
-        v->age = 0;
-        if (v->in->attack) { v->stage = S_ATTACK; v->level = 0; }
-        else { v->stage = S_DECAY; v->level = 256 + v->in->decay; }     /* the tick takes one step off again */
+        if (c->note == NOTE_OFF) { if (voices[ch].stage != S_OFF) voices[ch].stage = S_RELEASE; continue; }
+        note_on(ch, row);
     }
 }
 
 int music_ticks(void) { return nticks; }
 int music_tick(void) { return tick_now; }
 
+#define SEEK_BACK (8 * MUSIC_BAR_ROWS)   /* rows looked back over for a note still sounding: no note is held longer */
+
+/* Land in the middle of the tune as if it had been playing: each note channel
+ * takes up the note it would be holding, as old as it would be, so a long pad
+ * or bass note is there at once and not only from the next note written. A
+ * note already let go is left out (its tail is short), and so are the drums. */
 void music_seek(int tick)
 {
     if (nticks <= 0) return;
     tick_now = ((tick % nticks) + nticks) % nticks;
-    for (int i = 0; i < CH_DRUM; i++) { voices[i].stage = S_OFF; voices[i].gt = 0; }
     for (int i = 0; i < 2; i++) { drums[i].rate_step = drums[i].na_step = 0; drums[i].ndec = drums[i].tdec = 6; }
+    int last = (tick_now - 1) / MUSIC_ROW_TICKS;        /* the row at the target is begun by music_render itself */
+    for (int ch = 0; ch < CH_DRUM; ch++) {
+        voice *v = &voices[ch];
+        v->stage = S_OFF; v->gt = 0;
+        if (tick_now == 0 || !(music_channels >> ch & 1)) continue;
+        int r = last;
+        while (r >= 0 && r > last - SEEK_BACK && !cells[ch][r].note) r--;
+        if (r < 0 || r <= last - SEEK_BACK || cells[ch][r].note == NOTE_OFF) continue;
+        note_on(ch, r);
+        for (int t = r * MUSIC_ROW_TICKS; t < tick_now; t++) voice_tick(v);
+    }
 }
 
 void music_render(int16_t *out, int n)

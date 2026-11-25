@@ -440,6 +440,7 @@ static void draw_menu(void)
 static void show_menu(void)
 {
     if (mode == M_PLAY) video_leave(pic);
+    sound_pause();
     mode = M_MENU;
     menu_sel = MENU_RESUME;
     notice[0] = 0;
