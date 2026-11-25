@@ -9,7 +9,8 @@
 #include "nes.h"
 
 void sound_init(nes_t *n);                /* once, before any game */
-void sound_frame(nes_t *n);               /* after each frame: what it made goes out */
+/* After each frame: what it made goes out. late_us is how long it is since the frame was due to begin. */
+void sound_frame(nes_t *n, long late_us);
 void sound_stats(char *out, size_t n);    /* how it went since the last call, for the log; "" without sound */
 
 #endif

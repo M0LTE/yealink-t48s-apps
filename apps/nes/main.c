@@ -304,7 +304,7 @@ static void game_frame(void)
     if (t0 - next_us > 200000) next_us = t0;   /* far behind (the phone was busy): do not race to catch up */
     if (draw) nes_set_video(nes, scale_line_2x, video_target());
     nes_frame(nes, pad, draw);
-    sound_frame(nes);
+    sound_frame(nes, (long)(now_us() - next_us));
     if (draw) {
         video_present();
         skipped = 0;
