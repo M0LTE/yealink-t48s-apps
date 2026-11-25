@@ -2,13 +2,14 @@
 /*
  * nesrun: the core without the phone, for measuring and testing.
  *
- *   nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k FRAME:BUTTONS:LENGTH,...] [-n] [-c] [-t LOG] [-b]
+ *   nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k FRAME:BUTTONS:LENGTH,...] [-n] [-c] [-a] [-w OUT.wav] [-t LOG] [-b]
  *
  * Runs FRAMES frames (600 unless said) as fast as it can, drawing each at the
  * app's size into memory, and prints frames a second. -n draws nothing (the
  * cost of a skipped frame). -c leaves out lines that have not changed, as
  * the app does. -k holds pad BUTTONS (NES_* bits, as a number)
- * from FRAME for LENGTH frames. -s saves the last picture. -t runs nestest's
+ * from FRAME for LENGTH frames. -s saves the last picture. -a makes the sound
+ * too, at 16 kHz, and -w keeps it. -t runs nestest's
  * automatic mode and compares each instruction with its log. -b runs one of
  * blargg's test ROMs until it reports at $6000, and prints what it says.
  */
@@ -62,7 +63,10 @@ static int nestest(nes_t *n, const char *log)
 int main(int argc, char **argv)
 {
     const char *rom = NULL, *shot = NULL, *keys = "", *log = NULL, *err;
-    int frames = 600, draw = 1, blargg = 0;
+    int frames = 600, draw = 1, blargg = 0, sound = 0;
+    const char *wav = NULL;
+    FILE *wf = NULL;
+    long wav_n = 0;
     struct scale_target target = {.px = screen, .stride = 512};
     nes_t *n = calloc(1, sizeof *n);
     uint8_t *data;
@@ -75,6 +79,8 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-s") && i + 1 < argc) shot = argv[++i];
         else if (!strcmp(argv[i], "-k") && i + 1 < argc) keys = argv[++i];
         else if (!strcmp(argv[i], "-t") && i + 1 < argc) log = argv[++i];
+        else if (!strcmp(argv[i], "-w") && i + 1 < argc) wav = argv[++i], sound = 1;
+        else if (!strcmp(argv[i], "-a")) sound = 1;
         else if (!strcmp(argv[i], "-n")) draw = 0;
         else if (!strcmp(argv[i], "-c")) {
             target.seen = malloc(SCALE_SEEN_BYTES);
@@ -84,7 +90,7 @@ int main(int argc, char **argv)
         else if (!strcmp(argv[i], "-b")) blargg = 1;
         else rom = argv[i];
     }
-    if (!rom || !n || !(f = fopen(rom, "rb"))) return fprintf(stderr, "usage: nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k F:B:L,...] [-n] [-c] [-t LOG] [-b]\n"), 2;
+    if (!rom || !n || !(f = fopen(rom, "rb"))) return fprintf(stderr, "usage: nesrun ROM [-f FRAMES] [-s SHOT.ppm] [-k F:B:L,...] [-n] [-c] [-a] [-w OUT.wav] [-t LOG] [-b]\n"), 2;
     fseek(f, 0, SEEK_END);
     len = ftell(f);
     rewind(f);
@@ -94,6 +100,8 @@ int main(int argc, char **argv)
     if ((err = nes_load(n, data, (size_t)len))) return fprintf(stderr, "%s\n", err), 1;
     nes_set_video(n, scale_line_2x, &target);
     if (log) return nestest(n, log);
+    if (sound) nes_sound_start(n, 16000);
+    if (wav && (wf = fopen(wav, "wb"))) fseek(wf, 44, SEEK_SET);
 
     t0 = now();
     for (int i = 0; i < frames; i++) {
@@ -103,6 +111,11 @@ int main(int argc, char **argv)
             if (sscanf(k, "%d:%d:%d", &at, &b, &l) == 3 && i >= at && i < at + l) pad |= (unsigned)b;
         }
         nes_frame(n, pad, draw || i == frames - 1);
+        if (sound) {
+            int16_t pcm[512];
+            int got = nes_sound_read(n, pcm, 512);
+            if (wf) wav_n += (long)fwrite(pcm, 2, (size_t)got, wf);
+        }
         if (blargg && !memcmp(n->st.prg_ram + 1, "\xDE\xB0\x61", 3)) {
             const uint8_t *r = n->st.prg_ram;
             if (r[0] == 0x81) {
@@ -116,6 +129,13 @@ int main(int argc, char **argv)
     }
     if (blargg) return printf("%s: no result\n", rom), 1;
     t = now() - t0;
+    if (wf) {
+        /* a little-endian machine is assumed, as everywhere here */
+        uint32_t h[11] = {0x46464952, 36 + (uint32_t)wav_n * 2, 0x45564157, 0x20746D66, 16, 0x00010001, 16000, 32000, 0x00100002, 0x61746164, (uint32_t)wav_n * 2};
+        rewind(wf);
+        fwrite(h, 4, 11, wf);
+        fclose(wf);
+    }
     printf("%d frames in %.3f s: %.0f fps, %.2f ms a frame, mapper %d\n", frames, t, frames / t, t * 1000 / frames, n->mapper);
     if (shot && (f = fopen(shot, "wb"))) {
         fprintf(f, "P6\n512 480\n255\n");
