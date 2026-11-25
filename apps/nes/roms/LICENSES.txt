@@ -1,0 +1,30 @@
+The games that come with the NES app. Each is a separate work, shipped
+unchanged as its author published it, and is not part of the app's program.
+
+thwaite.nes
+    Thwaite 0.04, a missile defence game.
+    Copyright 2011, 2012, 2018 Damian Yerrick.
+    GNU General Public License, version 3 or (at your option) any later
+    version: see GPL-3.0.txt. Some of its source files carry a more
+    permissive licence of their own.
+    Source: https://github.com/pinobatch/thwaite-nes, tag v0.04
+    (commit ccd27ccbe3e201755b86c1b5f932b2e11ba74110).
+    A copy of that source is kept with this app's own:
+    apps/nes/roms/src/thwaite-nes-0.04.tar.gz in
+    https://github.com/M0LTE/yealink-t48s-apps
+
+croom.nes
+    Concentration Room 0.02a, a card matching game.
+    Copyright 2010 Damian Yerrick.
+    GNU General Public License, version 3 or later: see GPL-3.0.txt. "As a
+    special exception, you may copy and distribute exact copies of the
+    program, as published by Damian Yerrick, in iNES or UNIF executable form
+    without source code."
+    Source: https://github.com/pinobatch/croom-nes, tag v0.02a
+    (commit 209e628564ab890d05c188e7c84f80217088aa5a).
+    A copy of that source is kept with this app's own:
+    apps/nes/roms/src/croom-nes-0.02a.tar.gz in
+    https://github.com/M0LTE/yealink-t48s-apps
+
+These games come with ABSOLUTELY NO WARRANTY. They are not sponsored or
+endorsed by Nintendo.

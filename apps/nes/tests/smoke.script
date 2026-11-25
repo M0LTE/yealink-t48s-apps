@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# The list, a game played with a held key, the menu, a state saved and put
+# back, and out again.
+waitframe 5000
+expect app
+shot build/list.png
+key down
+waitframe 2000
+key ok
+wait 2500
+shot build/title.png
+key hash
+wait 1500
+key hash
+wait 1500
+key hash
+wait 2500
+shot build/before.png
+# the crosshair starts in the middle; Right held takes it to the edge
+waitpixel 266 255 4240FF 3000
+keydown right
+wait 1500
+waitpixel 634 255 4240FF 3000
+keyup right
+shot build/game.png
+key x
+waitframe 2000
+shot build/menu.png
+key down
+key ok
+waitframe 2000
+shot build/saved.png
+run sh -c 'test -s build/sim/nes/thwaite.*.state'
+keydown left
+wait 500
+keyup left
+key down
+key ok
+waitpixel 634 255 4240FF 3000
+key x
+waitframe 2000
+key up
+key ok
+waitframe 2000
+expectpixel 5 5 head
+key x
+waitscreen launcher 3000

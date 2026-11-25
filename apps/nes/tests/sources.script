@@ -1,0 +1,39 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# ROMs from the data folder and from a USB stick pushed in while the list is
+# up (its folder has a space in its name), a file that is not a ROM, and the list in each theme.
+waitframe 5000
+expect app
+run mkdir -p 'build/my stick/nes' build/sim/nes/roms
+run cp roms/croom.nes 'build/my stick/nes'/Pairs.nes
+run sh -c 'echo junk > build/sim/nes/roms/Broken.nes'
+run sh -c 'printf "/dev/sda1 %s/build/my\\\\040stick vfat rw 0 0\\n" "$PWD" > build/mounts'
+wait 2500
+waitframe 3000
+shot build/sources.png
+key down
+key down
+key ok
+waitframe 2000
+shot build/not-a-rom.png
+expectpixel 5 5 head
+key down
+waitframe 2000
+key ok
+wait 2500
+shot build/from-usb.png
+expectpixel 5 5 000000
+key x
+waitframe 2000
+touch 400 360
+waitframe 2000
+expectpixel 5 5 head
+run sh -c 'echo theme=directory > build/sim/screen'
+waitstate theme directory 3000
+waitpixel 5 5 head 3000
+shot build/list-directory.png
+run sh -c 'echo theme=twotone > build/sim/screen'
+waitstate theme twotone 3000
+waitpixel 5 5 head 3000
+shot build/list-twotone.png
+key x
+waitscreen launcher 3000

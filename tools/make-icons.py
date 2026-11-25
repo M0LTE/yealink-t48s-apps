@@ -60,6 +60,21 @@ def links():
     save(im, "links")
 
 
+def nes():
+    """A two-button pad."""
+    im = Image.new("RGB", (S, S), BG)
+    d = ImageDraw.Draw(im)
+    d.rounded_rectangle((8, 26, 88, 70), 9, fill=(214, 216, 220))
+    d.rounded_rectangle((13, 31, 83, 65), 5, fill=(36, 38, 46))
+    d.rectangle((25, 37, 31, 59), fill=(214, 216, 220))     # the cross
+    d.rectangle((17, 45, 39, 51), fill=(214, 216, 220))
+    d.rounded_rectangle((44, 52, 50, 55), 1, fill=(120, 124, 134))   # Select, Start
+    d.rounded_rectangle((53, 52, 59, 55), 1, fill=(120, 124, 134))
+    d.ellipse((62, 42, 70, 50), fill=(226, 60, 52))         # B, A
+    d.ellipse((73, 42, 81, 50), fill=(226, 60, 52))
+    save(im, "nes")
+
+
 def snake():
     im = Image.new("RGB", (S * 4, S * 4), BG)   # drawn large and shrunk, for smooth edges
     d = ImageDraw.Draw(im)
@@ -81,4 +96,5 @@ def snake():
 hello()
 waterfall()
 links()
+nes()
 snake()
