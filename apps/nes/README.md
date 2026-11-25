@@ -32,7 +32,7 @@ Supported boards: NROM, MMC1, UxROM, CNROM, MMC3, AxROM, Color Dreams, BNROM, Gx
 
 ## Saves
 
-In the data folder, named after the ROM: `Game.sav` is the cartridge's battery memory, written when the menu opens and when the game is left; `Game.state` is the one saved state, written by Save state.
+In the data folder, named after the ROM and its checksum, so two different ROMs of one name do not share a save: `Game.1a2b3c4d.sav` is the cartridge's battery memory (8 KB, as other emulators keep it), written when the menu opens and when the game is left; `Game.1a2b3c4d.state` is the one saved state, written by Save state.
 
 ## What it does not do yet
 

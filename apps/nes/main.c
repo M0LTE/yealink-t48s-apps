@@ -84,6 +84,21 @@ static int by_name(const void *a, const void *b)
     return strcasecmp(x->name, y->name);
 }
 
+/* a mount table writes a space in a name as \040, and so on */
+static void unescape(char *p)
+{
+    char *o = p;
+    for (; *p; p++, o++) {
+        if (p[0] == '\\' && p[1] >= '0' && p[1] <= '3' && p[2] >= '0' && p[2] <= '7' && p[3] >= '0' && p[3] <= '7') {
+            *o = (char)((p[1] - '0') * 64 + (p[2] - '0') * 8 + (p[3] - '0'));
+            p += 3;
+        } else {
+            *o = *p;
+        }
+    }
+    *o = 0;
+}
+
 /* USB sticks: whatever is mounted from a disk, wherever the firmware put it.
  * NES_MOUNTS names another table to read, for tests. */
 static void scan_usb(struct rom *list, int *n)
@@ -94,6 +109,7 @@ static void scan_usb(struct rom *list, int *n)
     if (!f) return;
     while (fgets(line, sizeof line, f)) {
         if (sscanf(line, "%127s %255s", dev, dir) != 2 || strncmp(dev, "/dev/sd", 7)) continue;
+        unescape(dir);
         scan_dir(list, n, dir, SRC_USB);
         snprintf(sub, sizeof sub, "%s/nes", dir);
         scan_dir(list, n, sub, SRC_USB);
@@ -162,6 +178,7 @@ static int write_file(const char *path, const void *data, size_t len)
     snprintf(tmp, sizeof tmp, "%s.tmp", path);
     if (!(f = fopen(tmp, "wb"))) return -1;
     ok = fwrite(data, 1, len, f) == len;
+    ok = fflush(f) == 0 && fsync(fileno(f)) == 0 && ok;   /* on the flash before it takes the old file's name */
     ok = fclose(f) == 0 && ok;
     if (!ok || rename(tmp, path) < 0) {
         unlink(tmp);
@@ -194,9 +211,11 @@ static long long now_us(void)
     return ts.tv_sec * 1000000LL + ts.tv_nsec / 1000;
 }
 
+/* Game.1a2b3c4d.sav: the ROM's name and its checksum, so two different ROMs
+ * of one name do not share a save */
 static void save_path(char *out, size_t n, const char *ext)
 {
-    snprintf(out, n, "%s/%s.%s", data_dir(), game, ext);
+    snprintf(out, n, "%s/%s.%08x.%s", data_dir(), game, (unsigned)nes->crc, ext);
 }
 
 /* the cartridge's battery RAM, when it has changed */
@@ -237,10 +256,12 @@ static int state_load(void)
     char path[340];
     size_t len;
     uint8_t *d;
+    int r;
     save_path(path, sizeof path, "state");
     d = read_file(path, nes_state_size(), &len);
-    notice_bad = !d || nes_state_load(nes, d, len) < 0;
-    snprintf(notice, sizeof notice, !d ? "No saved state" : notice_bad ? "State is from another version" : "");
+    r = d ? nes_state_load(nes, d, len) : -1;
+    notice_bad = r < 0;
+    snprintf(notice, sizeof notice, !d ? "No saved state" : r == -2 ? "State is for another game" : r < 0 ? "State is from another version" : "");
     free(d);
     return notice_bad ? -1 : 0;
 }
@@ -370,7 +391,7 @@ static void show_list(void)
 static void list_start(void)
 {
     const char *err;
-    if (sel >= nroms) return;
+    if (sel < 0 || sel >= nroms) return;
     notice[0] = 0;
     if ((err = game_start(&roms[sel]))) {
         snprintf(notice, sizeof notice, "%s", err);
@@ -495,11 +516,13 @@ static int on_touch(int x, int y)
     } else if (y < T48_UI_HEAD_H) {
         if (x < 130) return 1;
     } else if (y >= LIST_Y && y < LIST_Y + VISIBLE * ROW_H) {
-        if (x >= LIST_X + list_w()) {
+        if (nroms <= VISIBLE && x >= LIST_X + list_w()) {
+            /* the margin: no scroll buttons there */
+        } else if (x >= LIST_X + list_w()) {
             int step = y < LIST_Y + VISIBLE * ROW_H / 2 ? -(VISIBLE - 1) : VISIBLE - 1;
             sel += step;
-            if (sel < 0) sel = 0;
             if (sel >= nroms) sel = nroms - 1;
+            if (sel < 0) sel = 0;
             draw_list();
         } else if (top + (y - LIST_Y) / ROW_H < nroms) {
             sel = top + (y - LIST_Y) / ROW_H;

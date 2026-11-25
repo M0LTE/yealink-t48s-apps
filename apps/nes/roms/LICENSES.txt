@@ -9,6 +9,9 @@ thwaite.nes
     permissive licence of their own.
     Source: https://github.com/pinobatch/thwaite-nes, tag v0.04
     (commit ccd27ccbe3e201755b86c1b5f932b2e11ba74110).
+    A copy of that source is kept with this app's own:
+    apps/nes/roms/src/thwaite-nes-0.04.tar.gz in
+    https://github.com/M0LTE/yealink-t48s-apps
 
 croom.nes
     Concentration Room 0.02a, a card matching game.
@@ -19,6 +22,9 @@ croom.nes
     without source code."
     Source: https://github.com/pinobatch/croom-nes, tag v0.02a
     (commit 209e628564ab890d05c188e7c84f80217088aa5a).
+    A copy of that source is kept with this app's own:
+    apps/nes/roms/src/croom-nes-0.02a.tar.gz in
+    https://github.com/M0LTE/yealink-t48s-apps
 
 These games come with ABSOLUTELY NO WARRANTY. They are not sponsored or
 endorsed by Nintendo.

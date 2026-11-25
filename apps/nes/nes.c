@@ -203,7 +203,8 @@ struct state_hdr {
     char magic[8];
     uint32_t size, crc;
 };
-#define STATE_MAGIC "T48NES1"
+/* The digit goes up whenever struct nes_state changes; the size is checked too. */
+#define STATE_MAGIC "T48NES2"
 
 size_t nes_state_size(void)
 {
@@ -217,13 +218,37 @@ void nes_state_save(const nes_t *n, uint8_t *out)
     memcpy(out + sizeof h, &n->st, sizeof n->st);
 }
 
+/* A state comes from a file, so nothing in it is trusted to be in range:
+ * whatever indexes a table or bounds a loop is brought back inside. */
+static void state_clamp(struct nes_state *s)
+{
+    if (s->cpu.clk < 0 || s->cpu.clk > NES_DOTS_PER_FRAME) s->cpu.clk = 0;
+    if (s->apu.clk < s->cpu.clk - NES_DOTS_PER_FRAME || s->apu.clk > s->cpu.clk) s->apu.clk = s->cpu.clk;
+    s->apu.mode5 &= 1;
+    if (s->apu.seq < -3 || s->apu.seq > 37281) s->apu.seq = 0;
+    s->apu.dmc_rate &= 15;
+    if (s->apu.dmc_bits < 1 || s->apu.dmc_bits > 8) s->apu.dmc_bits = 8;
+    if (s->apu.dmc_timer < -NES_DOTS_PER_FRAME || s->apu.dmc_timer > 428) s->apu.dmc_timer = 428;
+    s->apu.dmc_addr |= 0x8000;
+    s->ppu.x &= 7;
+    s->ppu.w &= 1;
+    s->ppu.s0_clk = INT32_MAX;
+    if (s->map.mirror > MIRROR_FOUR) s->map.mirror = MIRROR_H;
+    if (s->map.shift_n > 4) s->map.shift = s->map.shift_n = 0;
+    s->map.last_wr = INT32_MIN;
+    s->pad_strobe &= 1;
+}
+
+/* 0, -1 if it is not a state this version wrote, -2 if it is another game's */
 int nes_state_load(nes_t *n, const uint8_t *in, size_t len)
 {
     struct state_hdr h;
     if (len != nes_state_size()) return -1;
     memcpy(&h, in, sizeof h);
-    if (memcmp(h.magic, STATE_MAGIC, sizeof h.magic) || h.size != sizeof n->st || h.crc != n->crc) return -1;
+    if (memcmp(h.magic, STATE_MAGIC, sizeof h.magic) || h.size != sizeof n->st) return -1;
+    if (h.crc != n->crc) return -2;
     memcpy(&n->st, in + sizeof h, sizeof n->st);
+    state_clamp(&n->st);
     mapper_sync(n);
     ppu_palette_changed(n);
     return 0;

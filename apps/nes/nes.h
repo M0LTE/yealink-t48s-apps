@@ -115,7 +115,8 @@ void nes_reset(nes_t *n, int power);
 void nes_set_video(nes_t *n, nes_line_fn fn, void *ctx);
 /* Run one frame with this pad state (NES_* bits). draw 0 skips the picture. */
 void nes_frame(nes_t *n, unsigned pad1, int draw);
-/* Save states: the size of one, and to and from memory. load returns 0, or -1 if it is not for this game. */
+/* Save states: the size of one, and to and from memory. load returns 0, -1 for
+ * something this version did not write, -2 for another game's state. */
 size_t nes_state_size(void);
 void nes_state_save(const nes_t *n, uint8_t *out);
 int nes_state_load(nes_t *n, const uint8_t *in, size_t len);

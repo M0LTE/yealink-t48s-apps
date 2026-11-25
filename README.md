@@ -67,7 +67,7 @@ It appears in the launcher. Settings go in `/data/config/apps/myapp.conf` as `ke
 
 AGPL-3.0-or-later (see `LICENSE`). libt48, which every app links, is AGPL-3.0-or-later too, so apps built with it are as well.
 
-What a published package contains besides this repository's code, all linked into the one program: libt48 with glyphs of its fonts (B612, IBM Plex and Figtree, SIL Open Font Licence 1.1), musl (MIT) and GCC's runtime library (GPL-3.0-or-later with the GCC Runtime Library Exception). The icons are drawn with DejaVu fonts (Bitstream Vera licence). The nes package also carries two homebrew games by Damian Yerrick, Thwaite and Concentration Room, each GPL-3.0-or-later and shipped unchanged as separate works: [apps/nes/roms](apps/nes/roms/README.md). Licence texts, and the source for the SDK's compiler: [NOTICE.md](https://github.com/M0LTE/yealink-t48s/blob/main/NOTICE.md) in the firmware repo.
+What a published package contains besides this repository's code, all linked into the one program: libt48 with glyphs of its fonts (B612, IBM Plex and Figtree, SIL Open Font Licence 1.1), musl (MIT) and GCC's runtime library (GPL-3.0-or-later with the GCC Runtime Library Exception). The icons are drawn with DejaVu fonts (Bitstream Vera licence). The nes package also carries two homebrew games by Damian Yerrick, Thwaite and Concentration Room, each GPL-3.0-or-later and shipped unchanged as separate works, with their source kept beside them: [apps/nes/roms](apps/nes/roms/README.md). Licence texts, and the source for the SDK's compiler: [NOTICE.md](https://github.com/M0LTE/yealink-t48s/blob/main/NOTICE.md) in the firmware repo.
 
 ## Notice
 

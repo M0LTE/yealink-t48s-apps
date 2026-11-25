@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # ROMs from the data folder and from a USB stick pushed in while the list is
-# up, a file that is not a ROM, and the list in each theme.
+# up (its folder has a space in its name), a file that is not a ROM, and the list in each theme.
 waitframe 5000
 expect app
-run mkdir -p build/stick/nes build/sim/nes/roms
-run cp roms/croom.nes build/stick/nes/Pairs.nes
+run mkdir -p 'build/my stick/nes' build/sim/nes/roms
+run cp roms/croom.nes 'build/my stick/nes'/Pairs.nes
 run sh -c 'echo junk > build/sim/nes/roms/Broken.nes'
-run sh -c 'echo "/dev/sda1 $PWD/build/stick vfat rw 0 0" > build/mounts'
+run sh -c 'printf "/dev/sda1 %s/build/my\\\\040stick vfat rw 0 0\\n" "$PWD" > build/mounts'
 wait 2500
 waitframe 3000
 shot build/sources.png

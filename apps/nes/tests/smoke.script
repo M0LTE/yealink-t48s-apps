@@ -30,7 +30,7 @@ key down
 key ok
 waitframe 2000
 shot build/saved.png
-run test -s build/sim/nes/thwaite.state
+run sh -c 'test -s build/sim/nes/thwaite.*.state'
 keydown left
 wait 500
 keyup left
