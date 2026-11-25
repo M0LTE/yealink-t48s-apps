@@ -232,7 +232,7 @@ static void state_clamp(struct nes_state *s)
     if (s->apu.seq < -3 || s->apu.seq > 37281) s->apu.seq = 0;
     s->apu.dmc_rate &= 15;
     if (s->apu.dmc_bits < 1 || s->apu.dmc_bits > 8) s->apu.dmc_bits = 8;
-    if (s->apu.dmc_timer < -NES_DOTS_PER_FRAME || s->apu.dmc_timer > 428) s->apu.dmc_timer = 428;
+    if (s->apu.dmc_timer < 1 || s->apu.dmc_timer > 428) s->apu.dmc_timer = 428;
     s->apu.dmc_addr |= 0x8000;
     s->apu.dmc_dac &= 0x7F;
     for (int i = 0; i < 2; i++) {
@@ -240,6 +240,7 @@ static void state_clamp(struct nes_state *s)
         s->apu.period[i] &= 0x7FF;
         if (s->apu.ptimer[i] < 0 || s->apu.ptimer[i] > 4096) s->apu.ptimer[i] = 0;
     }
+    for (int i = 0; i < 3; i++) { s->apu.env_vol[i] &= 15; s->apu.env_div[i] &= 15; }
     s->apu.tri_seq &= 31;
     s->apu.lfsr &= 0x7FFF;
     if (!s->apu.lfsr) s->apu.lfsr = 1;
