@@ -28,3 +28,9 @@ The best scores are in `best` in the app's data folder.
 ## Tests
 
 `make check` plays three scripted games in the simulator: a whole game with walls by the keys, one without walls by touch, and one that changes theme on the way. They put a file named `test` in the data folder (`seed N`, `step MS`) so the apples appear in the same places at a fixed speed, and wait for the head to reach a cell before each turn.
+
+## Small screens
+
+The manifest says `"screen": "any"`. On a T46S (480 x 272) the board is drawn with 24 pixel cells, so it has about as many as on the T48S.
+
+![on a T46S](screenshots/t46s-playing.png)

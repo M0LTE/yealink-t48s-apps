@@ -3,6 +3,13 @@
 #include "t48.h"
 #include "video.h"
 
+int pic_scale = 2;
+
+void video_size(int w, int h)
+{
+    pic_scale = w >= 512 && h >= 480 ? 2 : 1;
+}
+
 static struct scale_target target;
 static int fresh;             /* nothing of the game is on the screen yet: the first picture goes with its black surround */
 
@@ -46,14 +53,14 @@ static void damage_lines(void)
 {
     t48_surface *s = t48_screen();
     if (fresh) t48_damage_all();
-    else if (target.hi >= target.lo) t48_damage((s->w - PIC_W) / 2, (s->h - PIC_H) / 2 + target.lo * 2, PIC_W, (target.hi - target.lo + 1) * 2);
+    else if (target.hi >= target.lo) t48_damage((s->w - PIC_W) / 2, (s->h - PIC_H) / 2 + target.lo * pic_scale, PIC_W, (target.hi - target.lo + 1) * pic_scale);
     fresh = 0;
 }
 
 static void copy_out(const t48_surface *s, uint32_t *pic)
 {
     const uint32_t *p = s->px + (s->w - PIC_W) / 2 + (s->h - PIC_H) / 2 * s->stride;
-    for (int y = 0; y < PIC_H; y++) memcpy(pic + y * PIC_W, p + y * s->stride, PIC_W * sizeof *pic);
+    for (int y = 0; y < PIC_H; y++) memcpy(pic + y * PIC_W, p + y * s->stride, (size_t)PIC_W * sizeof *pic);
 }
 
 #if T48_API_LEVEL >= 3
@@ -90,7 +97,7 @@ void video_leave(uint32_t *pic)
 {
     if (flip) {
         if (shown) copy_out(shown, pic);
-        else memset(pic, 0, PIC_W * PIC_H * sizeof *pic);
+        else memset(pic, 0, (size_t)PIC_W * PIC_H * sizeof *pic);
         t48_flip_stop();
         flip = shown = NULL;
     } else {

@@ -1,9 +1,10 @@
 {
   "id": "nes",
   "name": "NES",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Plays NES games, with sound: two built in, more from the data folder or USB",
   "api": 1,
+  "screen": "any",
   "exec": "nes",
   "icon": "icon.ppm",
   "permissions": ["audio-out"],

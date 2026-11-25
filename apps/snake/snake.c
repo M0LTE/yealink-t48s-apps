@@ -19,14 +19,19 @@
 #include "t48.h"
 #include "sfx.h"
 
-#define CELL 40                 /* pixels */
+/* Sizes for the T48S's 800x480; a smaller screen (the T46S's 480x272: the manifest's "screen": "any")
+ * gets cells of 24 pixels, so the board has about as many, and everything else to match. */
+static int CELL = 40;           /* pixels */
+#define U(n) ((n) * CELL / 40)  /* a length drawn for a 40 pixel cell, on the cell in use */
+#define SMALL (CELL < 40)
 #define MAXC 32
 #define MAXR 20
 #define MAXN (MAXC * MAXR)
-#define HEAD_H T48_UI_HEAD_H
-#define EDGE 8                  /* the wall's thickness */
-#define BODY_R 15
-#define HEAD_R 18
+#define HEAD_H (t48_ui_head_h())
+#define EDGE U(8)               /* the wall's thickness */
+#define BODY_R U(15)
+#define HEAD_R U(18)
+#define HF (SMALL ? &t48_font_bold : &t48_font_head)   /* the header's figures */
 #define FRAME_MS 33
 #define STEP_SLOWEST 170        /* ms a cell at the start */
 #define STEP_FASTEST 90
@@ -61,7 +66,7 @@ static int score, best, new_best, won;
 
 static long long step_at;               /* when the last step was taken */
 static int step_ms;                     /* how long a step takes now */
-static int slide = CELL;                /* how far into the step the picture is, 0 to CELL */
+static int slide = 40;                  /* how far into the step the picture is, 0 to CELL */
 static long long held_ms;               /* paused this far into a step */
 static long long die_at, over_at;
 static int bump, flash;                 /* the dying snake: a nudge at what it hit, then it blinks */
@@ -282,21 +287,21 @@ static void head(const target *t, int x, int y, int d, uint32_t c)
     if (!touches(t, x - HEAD_R, y - HEAD_R, 2 * HEAD_R, 2 * HEAD_R)) return;
     disc(t, x, y, HEAD_R, c);
     for (int side = -1; side <= 1; side += 2) {
-        int ex = x + fx * 5 - fy * 8 * side, ey = y + fy * 5 + fx * 8 * side;
-        disc(t, ex, ey, 5, 0xFFFFFF);
-        disc(t, ex + fx * 2, ey + fy * 2, 2, 0x101010);
+        int ex = x + fx * U(5) - fy * U(8) * side, ey = y + fy * U(5) + fx * U(8) * side;
+        disc(t, ex, ey, U(5), 0xFFFFFF);
+        disc(t, ex + fx * U(2), ey + fy * U(2), SMALL ? 1 : 2, 0x101010);
     }
 }
 
 static void apple(const target *t, int cx, int cy, int size)   /* size: 0 to 100 and a little over */
 {
     const t48_theme *th = t48_theme_now();
-    int x = px(cx), y = py(cy) + 2, r = 12 * size / 100;
+    int x = px(cx), y = py(cy) + U(2), r = U(12) * size / 100;
     if (r < 1) return;
     disc(t, x, y, r, th->bad);
     if (size < 90) return;
-    blob(t, x + 1, y - r - 5, 9, 6, 3, th->good);
-    disc(t, x - 5, y - 5, 3, t48_mix(th->bad, 0xFFFFFF, 110));
+    blob(t, x + 1, y - r - U(5), U(9), U(6), U(3), th->good);
+    disc(t, x - U(5), y - U(5), U(3), t48_mix(th->bad, 0xFFFFFF, 110));
 }
 
 static void snake(const target *t)
@@ -332,19 +337,20 @@ static void header(const target *t)
 {
     const t48_theme *th = t48_theme_now();
     char num[16];
-    int y = (HEAD_H - t48_font_head.height) / 2, ly = (HEAD_H - t48_font_normal.height) / 2, x = W - 24;
+    int m = SMALL ? 10 : 24;
+    int y = (HEAD_H - HF->height) / 2, ly = (HEAD_H - t48_font_normal.height) / 2, x = W - m;
     box(t, 0, 0, W, HEAD_H, th->head);
     if (th->head_rule) box(t, 0, HEAD_H - 2, W, 2, th->line);
-    t48_text(S(t), 24 - t->ox, y - t->oy, &t48_font_head, th->on_head, "Snake");
+    t48_text(S(t), m - t->ox, y - t->oy, HF, th->on_head, "Snake");
     snprintf(num, sizeof num, "%d", best);
-    t48_text_right(S(t), x - t->ox, y - t->oy, &t48_font_head, th->on_head, num);
-    x -= t48_text_width(&t48_font_head, num) + 10;
+    t48_text_right(S(t), x - t->ox, y - t->oy, HF, th->on_head, num);
+    x -= t48_text_width(HF, num) + 10;
     t48_text_right(S(t), x - t->ox, ly - t->oy, &t48_font_normal, th->on_head_dim, "Best");
     if (state == TITLE) return;
     x -= t48_text_width(&t48_font_normal, "Best") + 36;
     snprintf(num, sizeof num, "%d", score);
-    t48_text_right(S(t), x - t->ox, y - t->oy, &t48_font_head, th->on_head, num);
-    x -= t48_text_width(&t48_font_head, num) + 10;
+    t48_text_right(S(t), x - t->ox, y - t->oy, HF, th->on_head, num);
+    x -= t48_text_width(HF, num) + 10;
     t48_text_right(S(t), x - t->ox, ly - t->oy, &t48_font_normal, th->on_head_dim, "Score");
 }
 
@@ -362,12 +368,16 @@ static void field(const target *t)
 }
 
 /* the box in the middle, and the one button in it */
-#define BOX_W 400
-#define BTN_W 200
-#define BTN_H 60
-static int box_h(void) { return state == TITLE ? 276 : state == PAUSED ? 170 : 250; }
+#define BOX_W (SMALL ? 300 : 400)
+#define BTN_W (SMALL ? 160 : 200)
+#define BTN_H (SMALL ? 40 : 60)
+static int box_h(void) { return SMALL ? (state == TITLE ? 196 : state == PAUSED ? 116 : 190) : state == TITLE ? 276 : state == PAUSED ? 170 : 250; }
 static int box_y(void) { return FY + (FH - box_h()) / 2; }
-static int btn_y(void) { return box_y() + (state == TITLE ? 120 : state == PAUSED ? 84 : 164); }
+static int btn_y(void)
+{
+    if (SMALL) return box_y() + (state == TITLE ? 94 : state == PAUSED ? 60 : 136);
+    return box_y() + (state == TITLE ? 120 : state == PAUSED ? 84 : 164);
+}
 
 static void overlay(const target *t)
 {
@@ -382,7 +392,21 @@ static void overlay(const target *t)
         t48_ui_dialog(S(t), x - t->ox, y - t->oy, BOX_W, h, new_best ? T48_UI_LIT : T48_UI_PLAIN);
     }
     t48_ui_dialog_ink(&ink);
-    if (state == TITLE) {
+    if (SMALL && state == TITLE) {
+        words(t, cx, y + 10, &t48_font_big, ink.text, "Snake");
+        words(t, cx, y + 62, &t48_font_normal, ink.dim, walls ? "Mind the walls" : "No walls");
+        words(t, cx, y + 144, &t48_font_small, ink.dim, t48_has_touch() ? "Arrows, 2 4 6 8 or a swipe to steer" : "Arrows or 2 4 6 8 to steer");
+        words(t, cx, y + 166, &t48_font_small, ink.dim, "OK: pause     X: back");
+    } else if (SMALL && state == PAUSED) {
+        words(t, cx, y + 14, &t48_font_head, ink.text, "Paused");
+    } else if (SMALL) {
+        words(t, cx, y + 10, &t48_font_head, ink.text, won ? "Board full" : "Game over");
+        snprintf(line, sizeof line, "%d", score);
+        words(t, cx, y + 44, &t48_font_big, ink.text, line);
+        if (new_best) snprintf(line, sizeof line, "New best");
+        else snprintf(line, sizeof line, "Best %d", best);
+        words(t, cx, y + 98, &t48_font_normal, ink.dim, line);
+    } else if (state == TITLE) {
         words(t, cx, y + 30, &t48_font_big, ink.text, "Snake");
         words(t, cx, y + 82, &t48_font_normal, ink.dim, walls ? "Mind the walls" : "No walls");
         words(t, cx, y + 204, &t48_font_small, ink.dim, "Arrows, 2 4 6 8 or a swipe to steer");
@@ -644,6 +668,8 @@ int main(void)
     if (t48_app_init() < 0) return 1;
     t48_surface *s = t48_screen();
     W = s->w; H = s->h;
+    if (W < 800 || H < 480) CELL = 24;
+    slide = CELL;
     back.w = W; back.h = H; back.stride = W;
     if (!(back.px = malloc((size_t)W * H * 4))) return 1;
     cols = (W - 2 * EDGE - 8) / CELL; if (cols > MAXC) cols = MAXC;

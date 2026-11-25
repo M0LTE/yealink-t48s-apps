@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# A T46S: 480x272, no touch, soft keys. The app is given the screen's own size, lays its
+# list out for it, and plays the game one pixel for one in the middle.
+waitframe 5000
+expect app
+expectstate appsize 480x272
+shot build/t46s-list.png
+key down
+waitframe 2000
+# Play is soft key 1
+key soft1
+wait 2500
+expectstate flip on
+shot build/t46s-title.png
+key hash
+wait 1500
+key hash
+wait 1500
+key hash
+wait 2500
+# the picture is 256x240 at 112, 16: black outside it, the game's sky inside
+expectpixel 50 136 000000
+expectpixel 430 136 000000
+# the crosshair starts in the middle; Right held takes it to the edge
+waitpixel 173 143 4240FF 3000
+keydown right
+wait 1500
+waitpixel 357 143 4240FF 3000
+keyup right
+shot build/t46s-game.png
+key x
+waitstate flip off 2000
+wait 200
+shot build/t46s-menu.png
+key up
+key ok
+wait 300
+shot build/t46s-list-after.png
+# Close is soft key 4
+key soft4
+waitscreen launcher 3000

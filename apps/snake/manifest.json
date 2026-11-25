@@ -1,9 +1,10 @@
 {
   "id": "snake",
   "name": "Snake",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "The classic: eat apples, grow, do not bite yourself",
   "api": 1,
+  "screen": "any",
   "exec": "snake",
   "icon": "icon.ppm",
   "permissions": ["audio-out"],

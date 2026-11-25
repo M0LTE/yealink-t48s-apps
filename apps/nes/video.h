@@ -7,8 +7,13 @@
 
 #include "scale.h"
 
-#define PIC_W 512
-#define PIC_H 480
+/* The picture: twice the NES's 256 x 240 where the screen has room (the T48S),
+ * otherwise as it is. video_size() decides, once the screen is known. */
+extern int pic_scale;
+#define PIC_W (256 * pic_scale)
+#define PIC_H (240 * pic_scale)
+#define PIC_MAX (512 * 480)
+void video_size(int w, int h);
 
 void video_enter(void);                       /* the game takes the screen */
 struct scale_target *video_target(void);      /* where to draw the next picture */

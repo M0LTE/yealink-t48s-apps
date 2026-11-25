@@ -25,3 +25,11 @@ $(O)/nesrun-arm: nesrun.c $(CORE) $(wildcard *.h)
 	$(ARM_CC) -O2 $(T48_FLAGS) -static -s -o $@ nesrun.c $(CORE) -lm
 
 .PHONY: nesrun
+
+# the same on a T46S's screen: 480x272, no touch, soft keys
+check: check-small
+check-small: $(O)/host/$(APP)/$(APP)
+	@for t in tests/small/*.script; do echo "== $$t"; rm -rf $(O)/sim; mkdir -p $(O)/sim/apps; \
+		$(SIM) --model t46s --app $(APP) --script $$t || exit 1; done
+
+.PHONY: check-small

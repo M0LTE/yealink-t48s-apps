@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-/* A scanline onto the screen at twice the size: 256 x 240 becomes 512 x 480,
- * which is the whole height of the phone's screen. Each pixel is looked up
- * once and written four times. */
+/* A scanline onto the screen. At twice the size 256 x 240 becomes 512 x 480,
+ * the whole height of the T48S's screen: each pixel is looked up once and
+ * written four times. On a smaller screen (the T46S's 480 x 272) it goes on as
+ * it is, one pixel for one, which is also a quarter of the writing. */
 #ifndef SCALE_H
 #define SCALE_H
 
@@ -43,6 +44,25 @@ static inline void scale_line_2x(void *ctx, int y, const uint8_t *idx, const uin
     }
     d -= 512;
     memcpy(d + t->stride, d, 512 * sizeof *d);
+}
+
+static inline void scale_line_1x(void *ctx, int y, const uint8_t *idx, const uint32_t *rgb)
+{
+    struct scale_target *t = ctx;
+    uint32_t *d = t->px + (size_t)y * (size_t)t->stride;
+    if (t->seen) {
+        uint8_t *was = t->seen + y * 256;
+        uint32_t *was_rgb = t->seen_rgb + y * 32;
+        if (!memcmp(was, idx, 256) && !memcmp(was_rgb, rgb, 32 * sizeof *rgb)) return;
+        memcpy(was, idx, 256);
+        memcpy(was_rgb, rgb, 32 * sizeof *rgb);
+    }
+    if (y < t->lo) t->lo = y;
+    if (y > t->hi) t->hi = y;
+    for (int x = 0; x < 256; x += 4) {
+        d[0] = rgb[idx[x]]; d[1] = rgb[idx[x + 1]]; d[2] = rgb[idx[x + 2]]; d[3] = rgb[idx[x + 3]];
+        d += 4;
+    }
 }
 
 #endif
