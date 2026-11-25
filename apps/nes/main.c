@@ -5,7 +5,8 @@
  * of the screen. X opens a small menu: save and load one state, reset, back
  * to the list. Battery saves are kept beside the states in the data folder.
  *
- * The core is in nes.h; getting a picture on the screen is in video.h.
+ * The core is in nes.h; getting a picture on the screen is in video.h, and
+ * the sound to the loudspeaker in sound.h.
  */
 #include <ctype.h>
 #include <dirent.h>
@@ -16,6 +17,7 @@
 #include <time.h>
 #include <unistd.h>
 #include "nes.h"
+#include "sound.h"
 #include "t48.h"
 #include "video.h"
 
@@ -302,6 +304,7 @@ static void game_frame(void)
     if (t0 - next_us > 200000) next_us = t0;   /* far behind (the phone was busy): do not race to catch up */
     if (draw) nes_set_video(nes, scale_line_2x, video_target());
     nes_frame(nes, pad, draw);
+    sound_frame(nes, (long)(now_us() - next_us));
     if (draw) {
         video_present();
         skipped = 0;
@@ -317,9 +320,11 @@ static void game_frame(void)
 
 static void game_stats(void)
 {
+    char snd[160];
+    sound_stats(snd, sizeof snd);
     if (stat_frames)
-        fprintf(stderr, "nes: %s: %ld frames, %ld without a picture, %.2f ms each\n", game, stat_frames, stat_skipped,
-                (double)stat_us / 1000.0 / (double)stat_frames);
+        fprintf(stderr, "nes: %s: %ld frames, %ld without a picture, %.2f ms each%s\n", game, stat_frames, stat_skipped,
+                (double)stat_us / 1000.0 / (double)stat_frames, snd);
     stat_frames = 0;
 }
 
@@ -539,6 +544,7 @@ int main(void)
     if (t48_app_init() < 0) return 1;
     s = t48_screen();
     if (!(nes = calloc(1, sizeof *nes))) return 1;
+    sound_init(nes);
     show_list();
 
     for (;;) {

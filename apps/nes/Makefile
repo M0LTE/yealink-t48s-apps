@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 APP = nes
 CORE = cpu.c ppu.c apu.c cart.c nes.c
-SRC = main.c video.c $(CORE)
+SRC = main.c video.c sound.c $(CORE)
 # the games that come with it, and their licences (roms/README.md)
 EXTRA = $(wildcard roms/*.nes) $(wildcard roms/*.txt)
 CFLAGS = -O2
@@ -18,10 +18,10 @@ nesrun: $(O)/nesrun $(O)/nesrun-arm
 
 $(O)/nesrun: nesrun.c $(CORE) $(wildcard *.h)
 	@mkdir -p $(@D)
-	$(HOST_CC) -O2 -g $(T48_FLAGS) -o $@ nesrun.c $(CORE)
+	$(HOST_CC) -O2 -g $(T48_FLAGS) -o $@ nesrun.c $(CORE) -lm
 
 $(O)/nesrun-arm: nesrun.c $(CORE) $(wildcard *.h)
 	@mkdir -p $(@D)
-	$(ARM_CC) -O2 $(T48_FLAGS) -static -s -o $@ nesrun.c $(CORE)
+	$(ARM_CC) -O2 $(T48_FLAGS) -static -s -o $@ nesrun.c $(CORE) -lm
 
 .PHONY: nesrun

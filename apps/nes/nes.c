@@ -133,6 +133,9 @@ void nes_write_io(nes_t *n, unsigned addr, unsigned v)
     }
 }
 
+/* The APU is run when a register is touched. Between times it is only
+ * brought up to date when it has something to say to the CPU (an IRQ) or
+ * something to take from it (the DMC's cycles), and at the end of a frame. */
 static void run(nes_t *n, int32_t until)
 {
     int32_t irq = apu_next_irq(n);
@@ -141,7 +144,7 @@ static void run(nes_t *n, int32_t until)
         apu_run(n, n->st.cpu.clk);
     }
     cpu_run(n, until);
-    apu_run(n, n->st.cpu.clk);
+    if (apu_dmc_busy(n) || apu_next_irq(n) <= n->st.cpu.clk) apu_run(n, n->st.cpu.clk);
 }
 
 /* MMC3 counts a line when the PPU goes from the background's patterns to the
@@ -188,6 +191,7 @@ void nes_frame(nes_t *n, unsigned pad1, int draw)
 
     /* 240: nothing happens */
     run(n, base + NES_DOTS_PER_LINE);
+    apu_run(n, s->cpu.clk);
 
     if (s->ppu.s0_clk != INT32_MAX) {
         s->ppu.status |= 0x40;
@@ -204,7 +208,7 @@ struct state_hdr {
     uint32_t size, crc;
 };
 /* The digit goes up whenever struct nes_state changes; the size is checked too. */
-#define STATE_MAGIC "T48NES2"
+#define STATE_MAGIC "T48NES3"
 
 size_t nes_state_size(void)
 {
@@ -228,8 +232,20 @@ static void state_clamp(struct nes_state *s)
     if (s->apu.seq < -3 || s->apu.seq > 37281) s->apu.seq = 0;
     s->apu.dmc_rate &= 15;
     if (s->apu.dmc_bits < 1 || s->apu.dmc_bits > 8) s->apu.dmc_bits = 8;
-    if (s->apu.dmc_timer < -NES_DOTS_PER_FRAME || s->apu.dmc_timer > 428) s->apu.dmc_timer = 428;
+    if (s->apu.dmc_timer < 1 || s->apu.dmc_timer > 428) s->apu.dmc_timer = 428;
     s->apu.dmc_addr |= 0x8000;
+    s->apu.dmc_dac &= 0x7F;
+    for (int i = 0; i < 2; i++) {
+        s->apu.pseq[i] &= 7;
+        s->apu.period[i] &= 0x7FF;
+        if (s->apu.ptimer[i] < 0 || s->apu.ptimer[i] > 4096) s->apu.ptimer[i] = 0;
+    }
+    for (int i = 0; i < 3; i++) { s->apu.env_vol[i] &= 15; s->apu.env_div[i] &= 15; }
+    s->apu.tri_seq &= 31;
+    s->apu.lfsr &= 0x7FFF;
+    if (!s->apu.lfsr) s->apu.lfsr = 1;
+    if (s->apu.tri_timer < 0 || s->apu.tri_timer > 2048) s->apu.tri_timer = 0;
+    if (s->apu.noise_timer < 0 || s->apu.noise_timer > 4068) s->apu.noise_timer = 0;
     s->ppu.x &= 7;
     s->ppu.w &= 1;
     s->ppu.s0_clk = INT32_MAX;
@@ -249,6 +265,7 @@ int nes_state_load(nes_t *n, const uint8_t *in, size_t len)
     if (h.crc != n->crc) return -2;
     memcpy(&n->st, in + sizeof h, sizeof n->st);
     state_clamp(&n->st);
+    n->snd.fresh = 1;
     mapper_sync(n);
     ppu_palette_changed(n);
     return 0;

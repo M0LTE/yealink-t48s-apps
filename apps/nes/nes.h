@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 /*
  * A small NES core, written for this app: 6502, PPU drawn a scanline at a
- * time, the APU's timing (no sound yet) and the common cartridge boards.
+ * time, the APU with its sound and the common cartridge boards.
  * It knows nothing about the phone: the frontend hands it a ROM image and a
  * function that takes each finished scanline.
  *
@@ -57,14 +57,44 @@ struct nes_ppu {
 struct nes_apu {
     int32_t clk;          /* dots: how far it has been run */
     int32_t seq;          /* CPU cycles into the frame sequence */
-    uint8_t reg[0x18];    /* the registers as last written, for the sound to come */
+    uint8_t reg[0x18];    /* the registers as last written */
     uint8_t mode5, irq_off, enabled;
     uint8_t len[4];       /* length counters: pulse 1, pulse 2, triangle, noise */
     uint8_t lin, lin_reload;      /* the triangle's linear counter */
-    /* DMC: only what decides when bytes are taken and the IRQ fires */
+    /* DMC: the reader, then the shifter and the 7-bit level it moves */
     uint8_t dmc_irq_on, dmc_loop, dmc_rate, dmc_buf_full, dmc_buf, dmc_bits;
     uint16_t dmc_addr, dmc_left;
     int32_t dmc_timer;    /* CPU cycles to the next output bit */
+    uint8_t dmc_shift, dmc_silent, dmc_dac;
+    /* the two pulses */
+    uint8_t pseq[2];              /* where each is in its eight steps */
+    uint16_t period[2];           /* as written, then as the sweep has moved it */
+    int32_t ptimer[2];            /* CPU cycles to the next step */
+    uint8_t sw_div[2], sw_reload[2];
+    /* envelopes: pulse 1, pulse 2, noise */
+    uint8_t env_start[3], env_div[3], env_vol[3];
+    /* triangle and noise */
+    uint8_t tri_seq;
+    uint16_t lfsr;
+    int32_t tri_timer, noise_timer;
+};
+
+/* The sound on its way out: not part of a save state. Every change of level
+ * is put down as a band-limited step at its exact time, so what is read back
+ * at the output rate has no aliasing to speak of. */
+#define NES_SND_TAPS 16
+#define NES_SND_LEN 1024          /* output samples that can wait to be read */
+struct nes_sound {
+    int on;
+    int fresh;                    /* take the mixer's level as it stands, without a step: a start or a reset is not a sound */
+    uint32_t spc;                 /* output samples in a CPU cycle, 8.24 */
+    uint32_t at, sub;             /* now, in samples from buf[0] (12.20), and the 4 bits below that */
+    int32_t pulse_level, tnd_level;   /* what the two halves of the mixer last gave */
+    int32_t sum, hp1, hp2;        /* the running level, and the two high-pass filters */
+    int32_t c1, c2;
+    uint8_t nfrac;                /* fast noise: eighths of its last slot it was high */
+    int rate;
+    uint32_t buf[NES_SND_LEN + NES_SND_TAPS];
 };
 
 struct nes_mapper {
@@ -105,6 +135,7 @@ struct nes {
     uint32_t rgb[32];         /* the palette as screen colours */
     nes_line_fn line;
     void *line_ctx;
+    struct nes_sound snd;
 };
 
 /* nes.c */
@@ -144,6 +175,14 @@ void apu_run(nes_t *n, int32_t clk);
 uint8_t apu_read_status(nes_t *n);
 void apu_write(nes_t *n, unsigned addr, unsigned v);
 int32_t apu_next_irq(const nes_t *n);
+int apu_dmc_busy(const nes_t *n);
+/* Sound. Off until started: 16-bit mono at rate samples a second (8000 to
+ * 48000), 0 for off again. nes_sound_read takes what the frames run so far
+ * have made, at most max, and returns how many. nes_sound_tune bends the rate
+ * by parts in a million, to keep step with whatever plays it. */
+void nes_sound_start(nes_t *n, int rate);
+void nes_sound_tune(nes_t *n, int ppm);
+int nes_sound_read(nes_t *n, int16_t *out, int max);
 
 /* cart.c */
 int mapper_supported(int mapper);
