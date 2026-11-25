@@ -1,0 +1,75 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# A whole game with walls: seven apples by the arrow keys, then into the wall.
+# The "test" file fixes where the apples appear and how fast the snake goes, and
+# each turn waits for the head to enter the cell it is made in.
+waitframe 5000
+expect app
+shot build/title.png
+run printf 'seed 7\nstep 300\n' > build/sim/snake/test
+key ok
+waitpixel 543 284 good 5000
+key down
+# apple 1 at 13, 7
+waitpixel 560 370 good 5000
+waitpixel 560 347 good 5000
+key right
+waitpixel 583 364 good 5000
+key up
+waitpixel 600 261 good 5000
+key right
+# apple 2 at 15, 4
+waitpixel 640 250 good 5000
+waitpixel 623 244 good 5000
+key up
+waitpixel 640 221 good 5000
+key left
+waitpixel 577 204 good 5000
+key down
+waitpixel 560 307 good 5000
+key left
+# apple 3 at 6, 6
+waitpixel 280 330 good 5000
+waitpixel 297 324 good 5000
+key up
+waitpixel 280 181 good 5000
+key right
+# apple 4 at 7, 2
+waitpixel 320 170 good 5000
+waitpixel 303 164 good 5000
+key up
+waitpixel 320 141 good 5000
+key left
+waitpixel 257 124 good 5000
+key down
+waitpixel 240 267 good 5000
+key left
+# apple 5 at 3, 5
+waitpixel 160 290 good 5000
+waitpixel 177 284 good 5000
+key up
+waitpixel 160 101 good 5000
+key right
+# apple 6 at 6, 0
+waitpixel 280 90 good 5000
+waitpixel 623 84 good 5000
+key down
+# apple 7 at 15, 6
+waitpixel 640 330 good 5000
+shot build/playing.png
+# into the bottom wall: it blinks, then the score, kept as the best
+waitpixel 310 310 text 8000
+run grep -qx 'walls 7' build/sim/snake/best
+shot build/game-over.png
+# again, pause, resume, and X back to the title and out
+wait 500
+key ok
+waitpixel 180 284 good 3000
+key ok
+waitpixel 310 280 text 3000
+shot build/paused.png
+key ok
+waitpixel 420 284 good 5000
+key x
+waitpixel 310 270 text 3000
+key x
+waitscreen launcher 3000

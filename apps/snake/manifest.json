@@ -1,0 +1,13 @@
+{
+  "id": "snake",
+  "name": "Snake",
+  "version": "0.1.0",
+  "description": "The classic: eat apples, grow, do not bite yourself",
+  "api": 1,
+  "exec": "snake",
+  "icon": "icon.ppm",
+  "permissions": [],
+  "settings": [
+    { "key": "walls", "label": "Walls", "type": "bool", "default": "true" }
+  ]
+}

@@ -1,0 +1,29 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Without walls, by touch: a swipe turns the snake up and it comes back in at
+# the bottom; a tap to the right of the head turns it right.
+waitframe 5000
+# the shell closes an app whose settings change
+run echo walls=false > build/sim/apps/snake.conf
+waitscreen launcher 5000
+key ok
+waitscreen app 3000
+waitframe 5000
+run printf 'seed 7\nstep 300\n' > build/sim/snake/test
+touch 400 300
+# a swipe up as the head enters column 6
+waitpixel 263 284 good 5000
+touchdown 400 300
+touchmove 400 280
+touchmove 400 240
+touchup 400 240
+# out of the top, in at the bottom
+waitpixel 280 461 good 8000
+shot build/wrap.png
+# a tap right of the head as it enters row 7
+waitpixel 280 381 good 5000
+touch 600 364
+waitpixel 400 364 good 5000
+key x
+waitpixel 310 270 text 3000
+key x
+waitscreen launcher 3000
