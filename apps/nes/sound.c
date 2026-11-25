@@ -142,6 +142,13 @@ void sound_frame(nes_t *n, long late_us)
     level_sum += waiting;
 }
 
+/* A start that was under way when the game was left would carry on when it
+ * came back, and let go of samples from before. */
+void sound_pause(void)
+{
+    starting = held = 0;
+}
+
 void sound_stats(char *out, size_t n)
 {
     unsigned dry = t48_sound_dry();
@@ -157,6 +164,7 @@ void sound_stats(char *out, size_t n)
 
 void sound_init(nes_t *n) { (void)n; }
 void sound_frame(nes_t *n, long late_us) { (void)n; (void)late_us; }
+void sound_pause(void) { }
 void sound_stats(char *out, size_t n) { if (n) out[0] = 0; }
 
 #endif
