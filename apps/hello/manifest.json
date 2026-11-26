@@ -6,6 +6,7 @@
   "api": 1,
   "exec": "hello",
   "icon": "icon.ppm",
+  "category": "General",
   "permissions": [],
   "settings": [
     { "key": "name", "label": "Who to greet", "type": "text", "default": "world" }

@@ -6,6 +6,7 @@
   "api": 1,
   "exec": "links",
   "icon": "icon.ppm",
+  "category": "Radio",
   "permissions": ["network"],
   "settings": [
     { "key": "url", "label": "Node web server (http://host:port/)", "type": "text", "default": "http://10.45.0.121:8008/" },
