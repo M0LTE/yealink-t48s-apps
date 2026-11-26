@@ -6,6 +6,7 @@
   "api": 1,
   "exec": "demo",
   "icon": "icon.ppm",
+  "category": "Media",
   "permissions": ["audio-out", "lamps"],
   "settings": []
 }

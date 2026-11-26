@@ -21,6 +21,7 @@ New apps and fixes are welcome, written by hand or with an AI tool. The shared r
 - One static ARM program, a `manifest.json` and a 96 x 96 `icon.ppm`. Start from [apps/hello](apps/hello).
 - Colours from `t48_theme_now()`, drawn again on `T48_EV_THEME`; `t48_ui_*` for headers, buttons and rows. The look: [docs/design](https://github.com/M0LTE/yealink-t48s/blob/main/docs/design/README.md).
 - A short press of X is back. Close network connections on PAUSE, draw everything again on RESUME.
+- A manifest names one `category` (General, Games, Radio, Tools, Media), the group the app is listed under; `t48-pack` refuses any other.
 - A manifest asks only for the permissions the app uses. Say `"screen": "any"` only if the app lays itself out for the T46S's 480x272 too, with a test for it.
 - C as in `apps/hello`: four spaces, `-Wall -Wextra` clean, a comment at the top of each file saying what it is for.
 - Text on the screen follows the firmware's [docs/style.md](https://github.com/M0LTE/yealink-t48s/blob/main/docs/style.md): terse, no exclamation marks, say it once, ASCII only.

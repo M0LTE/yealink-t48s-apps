@@ -2,14 +2,14 @@
 
 Apps for the open firmware for the Yealink SIP-T48S desk phone: [M0LTE/yealink-t48s](https://github.com/M0LTE/yealink-t48s). How apps fit in: [docs/architecture.md](https://github.com/M0LTE/yealink-t48s/blob/main/docs/architecture.md#3-apps) in the firmware repo.
 
-| App | What it does |
-|---|---|
-| [hello](apps/hello) | The smallest useful app. Copy it to start your own. |
-| [waterfall](apps/waterfall) | Live receive waterfall and recent frames of a pdn-soundmodem station (GB7RDG unless you change its address). Tap a frame for its details. |
-| [links](apps/links) | A LinBPQ packet node at a glance: open links, sessions and neighbours (GB7RDG unless you change its address). |
-| [snake](apps/snake) | The classic game: eat apples, grow, get faster. Keys or touch. |
-| [nes](apps/nes) | Plays NES games, with sound. Two free ones come with it; more load from the data folder or a USB stick. |
-| [demo](apps/demo) | Real-time 3D, a tunnel, plasma and a scroller, in the old demo style, with a chiptune made as it plays: what the phone can draw and play. |
+| App | Category | What it does |
+|---|---|---|
+| [hello](apps/hello) | General | The smallest useful app. Copy it to start your own. |
+| [waterfall](apps/waterfall) | Radio | Live receive waterfall and recent frames of a pdn-soundmodem station (GB7RDG unless you change its address). Tap a frame for its details. |
+| [links](apps/links) | Radio | A LinBPQ packet node at a glance: open links, sessions and neighbours (GB7RDG unless you change its address). |
+| [snake](apps/snake) | Games | The classic game: eat apples, grow, get faster. Keys or touch. |
+| [nes](apps/nes) | Games | Plays NES games, with sound. Two free ones come with it; more load from the data folder or a USB stick. |
+| [demo](apps/demo) | Media | Real-time 3D, a tunnel, plasma and a scroller, in the old demo style, with a chiptune made as it plays: what the phone can draw and play. |
 
 ![waterfall](apps/waterfall/screenshots/live.png)
 ![links](apps/links/screenshots/live.png)
@@ -33,7 +33,7 @@ tar -xzf t48s-sdk.tar.gz && t48s-sdk/relocate-sdk.sh
 export T48_SDK=$PWD/t48s-sdk
 ```
 
-**2. Copy hello.** `cp -r apps/hello apps/myapp`, then in the copy rename `hello.c`, set `APP` and `SRC` in the `Makefile`, and give `manifest.json` your app's `id` (the same as `APP`), `name`, `version`, `description` and settings. The `id` is a-z, 0-9, `-`, `.` and `_`.
+**2. Copy hello.** `cp -r apps/hello apps/myapp`, then in the copy rename `hello.c`, set `APP` and `SRC` in the `Makefile`, and give `manifest.json` your app's `id` (the same as `APP`), `name`, `version`, `description`, `category` and settings. The category is one of General, Games, Radio, Tools and Media: the phone's app store and the feed page group apps by it, and an app without one is General. The `id` is a-z, 0-9, `-`, `.` and `_`.
 
 **3. Write it** with libt48. `$T48_SDK/share/t48/libt48/include/t48.h` lists everything: drawing, fonts, a JSON reader, a WebSocket client, timers, watching your own sockets, settings. [hello.c](apps/hello/hello.c) shows the shape of an app: start, draw, then a loop over events. Take colours from `t48_theme_now()` (ground, ink, quiet ink, go, stop) and draw everything again on `T48_EV_THEME`, and the app wears whichever theme the owner picked in Settings, Screen, Theme; the fonts follow by themselves, and `t48_ui_*` draws the shell's own header, buttons and rows. Answer PAUSE by closing network connections (the app is frozen a second later) and RESUME by drawing everything again. A short press of X is "back"; leave with `return 0` when there is nowhere to go back to.
 

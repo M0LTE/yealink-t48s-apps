@@ -7,6 +7,7 @@
   "screen": "any",
   "exec": "snake",
   "icon": "icon.ppm",
+  "category": "Games",
   "permissions": ["audio-out"],
   "settings": [
     { "key": "walls", "label": "Walls", "type": "bool", "default": "true" }
